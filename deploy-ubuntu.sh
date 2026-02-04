@@ -98,8 +98,8 @@ if [ -d "$INSTALL_DIR" ]; then
 fi
 
 if [ ! -d "$INSTALL_DIR" ]; then
-    echo_info "克隆 OpenClaw 仓库..."
-    git clone https://github.com/openclaw/openclaw.git "$INSTALL_DIR"
+    echo_info "克隆 openclaw-1G-memory 仓库..."
+    git clone https://github.com/808cn163/openclaw-1G-memory.git "$INSTALL_DIR"
     cd "$INSTALL_DIR"
 fi
 
