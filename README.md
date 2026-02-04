@@ -11,6 +11,34 @@
   <strong>脱胎换骨！脱胎换骨！</strong>
 </p>
 
+---
+
+## ⚠️ 重要更新说明
+
+**最新版本已移除本地 LLM 支持**
+
+为优化性能和减少内存占用，我们已完全移除本地 LLM（node-llama-cpp, ollama）支持。所有 AI 功能现在通过云端 API 完成。
+
+**主要变化：**
+- ✅ 移除 `node-llama-cpp` 依赖
+- ✅ 移除本地嵌入模型支持
+- ✅ 配置中不再支持 `provider: "local"` 选项
+- ✅ 仅支持云端 Embeddings 提供商：OpenAI 和 Google Gemini
+- ✅ **本地持久化存储（SQLite + sqlite-vec）功能保持不变**
+
+**建议配置：**
+```yaml
+agents:
+  defaults:
+    memorySearch:
+      provider: "openai"  # 或 "gemini"
+      fallback: "gemini"  # 或 "openai"
+```
+
+详见：[内存搜索配置](https://docs.openclaw.ai/concepts/memory-search)
+
+---
+
 <p align="center">
   <a href="https://github.com/openclaw/openclaw/actions/workflows/ci.yml?branch=main"><img src="https://img.shields.io/github/actions/workflow/status/openclaw/openclaw/ci.yml?branch=main&style=for-the-badge" alt="CI 状态"></a>
   <a href="https://github.com/openclaw/openclaw/releases"><img src="https://img.shields.io/github/v/release/openclaw/openclaw?include_prereleases&style=for-the-badge" alt="GitHub 发布"></a>

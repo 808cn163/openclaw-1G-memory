@@ -253,16 +253,9 @@ export type MemorySearchConfig = {
     };
   };
   /** Fallback behavior when embeddings fail. */
-  fallback?: "openai" | "gemini" | "local" | "none";
-  /** Embedding model id (remote) or alias (local). */
+  fallback?: "openai" | "gemini" | "none";
+  /** Embedding model id (remote). */
   model?: string;
-  /** Local embedding settings (node-llama-cpp). */
-  local?: {
-    /** GGUF model path or hf: URI. */
-    modelPath?: string;
-    /** Optional cache directory for local models. */
-    modelCacheDir?: string;
-  };
   /** Index storage configuration. */
   store?: {
     driver?: "sqlite";
