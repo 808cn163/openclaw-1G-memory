@@ -1,0 +1,111 @@
+# OpenClaw 精简配置 - 1GB 内存优化版本
+# 适用于 Ubuntu 低内存环境部署
+
+# ============================================
+# AI 代理配置
+# ============================================
+agents:
+  defaults:
+    # 使用云端 API，不使用本地模型
+    memorySearch:
+      provider: "openai"  # 或使用 "gemini"
+      fallback: "none"
+      model: "text-embedding-3-small"
+
+    # 限制并发以节省内存
+    concurrency:
+      maxConcurrent: 1
+
+    # 工具配置
+    tools:
+      # 禁用浏览器工具（默认）
+      browser:
+        enabled: false
+        maxInstances: 1  # 如需启用，最多1个实例
+
+# ============================================
+# 消息通道配置 - 仅 WhatsApp
+# ============================================
+channels:
+  # WhatsApp 通道（唯一启用的通道）
+  whatsapp:
+    enabled: true
+    # 请在首次运行时通过命令行配置或手动添加凭证
+
+  # 所有其他通道已禁用（依赖已从 package.json 移除）
+  telegram:
+    enabled: false
+  discord:
+    enabled: false
+  slack:
+    enabled: false
+  signal:
+    enabled: false
+  line:
+    enabled: false
+  feishu:
+    enabled: false
+  imessage:
+    enabled: false
+
+# ============================================
+# 网关配置
+# ============================================
+gateway:
+  mode: "local"
+  bind: "loopback"  # 仅本地访问
+  port: 18789
+
+  # 限制并发请求
+  maxConcurrentRequests: 2
+
+  # 内存优化
+  requestTimeout: 120000  # 2分钟超时
+
+# ============================================
+# 媒体处理配置
+# ============================================
+media:
+  # 使用 Sharp 进行图像处理
+  imageBackend: "sharp"  # Ubuntu 环境使用 sharp
+
+  # 限制图像尺寸以节省内存
+  maxImageSize: 1024
+  maxConcurrentProcessing: 1
+
+  # 允许的媒体类型（禁用 PDF 以节省内存）
+  allowedTypes:
+    - "image/jpeg"
+    - "image/png"
+    - "image/webp"
+    - "image/gif"
+
+# ============================================
+# 会话管理
+# ============================================
+sessions:
+  # 限制历史消息数量
+  maxHistoryMessages: 50
+
+  # 定期清理
+  cleanupInterval: 3600000  # 1小时
+
+# ============================================
+# 内存优化配置
+# ============================================
+memory:
+  # 限制向量缓存大小
+  maxVectorCacheSize: 500
+
+  # 使用云端嵌入服务，不缓存模型
+  embeddings:
+    provider: "openai"
+    cacheEnabled: false
+
+# ============================================
+# 日志配置
+# ============================================
+logging:
+  level: "warn"  # 减少日志输出
+  # 日志文件位置
+  # file: "/var/log/openclaw/openclaw.log"
