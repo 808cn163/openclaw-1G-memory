@@ -15,7 +15,7 @@
 
 ## ⚠️ 重要更新说明
 
-**最新版本已移除本地 LLM 支持**
+**本版本改自官方的openclaw 2026.2.2版本，为节省内存,移除本地 LLM 支持**
 
 为优化性能和减少内存占用，我们已完全移除本地 LLM（node-llama-cpp, ollama）支持。所有 AI 功能现在通过云端 API 完成。
 
@@ -111,13 +111,38 @@ openclaw agent --message "Ship checklist" --thinking high
 切换渠道（git + npm）：`openclaw update --channel stable|beta|dev`。
 详情：[开发渠道](https://docs.openclaw.ai/install/development-channels)。
 
+## ubuntu下用 deploy-ubuntu.sh 脚本安装
+
+```bash
+./deploy-ubuntu.sh
+```
+
 ## 从源码编译（开发）
 
 推荐使用 `pnpm` 从源码构建。Bun 是可选的，用于直接运行 TypeScript。
 
 ```bash
-git clone https://github.com/openclaw/openclaw.git
-cd openclaw
+
+如果没有安装 node(node -v 没有返回版本号)
+用 NodeSource（稳定）安装 node：
+curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+sudo apt install -y nodejs
+
+检查是否安装正确：
+node -v
+v22.22.0
+
+npm -v
+10.9.4
+
+用 npm 装 pnpm
+sudo npm install -g pnpm
+
+检查pnpm版本，确认pnpm是否安装好。
+pnpm -v
+
+git clone https://github.com/808cn163/openclaw-1G-memory
+cd openclaw-1G-memory
 
 pnpm install
 pnpm ui:build # 首次运行时自动安装 UI 依赖
