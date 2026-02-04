@@ -111,7 +111,49 @@ openclaw agent --message "Ship checklist" --thinking high
 切换渠道（git + npm）：`openclaw update --channel stable|beta|dev`。
 详情：[开发渠道](https://docs.openclaw.ai/install/development-channels)。
 
-## ubuntu下用 deploy-ubuntu.sh 脚本安装
+## 🚀 小内存Ubuntu系统安装（推荐 <1GB内存机器）
+
+### 方案一：使用预编译包（推荐）
+
+**适用场景**：内存小于1GB的Ubuntu系统，避免编译过程卡死
+
+```bash
+# 1. 下载部署脚本
+curl -fsSL https://raw.githubusercontent.com/808cn163/openclaw-1G-memory/main/deploy-ubuntu.sh -o deploy-ubuntu.sh
+
+# 2. 执行安装（自动下载预编译包）
+bash deploy-ubuntu.sh
+```
+
+**部署脚本会自动完成以下工作**：
+- ✅ 检查系统资源（内存、磁盘、网络）
+- ✅ 安装 Node.js 22+ 和系统依赖
+- ✅ 从 GitHub Release 下载预编译包
+- ✅ 配置环境变量（内存限制、禁用浏览器）
+- ✅ 创建 systemd 服务（可选自启）
+
+**安装完成后**：
+```bash
+# 配置 API 密钥
+nano ~/.openclaw/.env
+# 添加：OPENAI_API_KEY=your_key 或 GEMINI_API_KEY=your_key
+
+# 测试运行
+cd ~/openclaw
+source ~/.openclaw/.env
+node openclaw.mjs --version
+
+# 启动服务（方式A：手动）
+node openclaw.mjs gateway run --bind loopback --port 18789
+
+# 启动服务（方式B：systemd，推荐）
+sudo systemctl enable openclaw    # 开机自启
+sudo systemctl start openclaw     # 启动服务
+sudo systemctl status openclaw    # 查看状态
+sudo journalctl -u openclaw -f    # 查看日志
+```
+
+### 方案二：传统脚本安装
 
 ```bash
 ./deploy-ubuntu.sh
@@ -141,7 +183,7 @@ sudo npm install -g pnpm
 检查pnpm版本，确认pnpm是否安装好。
 pnpm -v
 
-git clone https://github.com/808cn163/openclaw-1G-memory
+git clone https://github.com/808cn163/openclaw-1G-memory.git
 cd openclaw-1G-memory
 
 pnpm install
