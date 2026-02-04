@@ -107,7 +107,7 @@ cd "$INSTALL_DIR"
 
 # 安装依赖（跳过可选依赖以节省空间和内存）
 echo_info "安装项目依赖..."
-pnpm install --omit=peer --ignore-scripts
+pnpm install --no-optional --ignore-scripts
 
 # 构建项目
 echo_info "构建项目..."
