@@ -60,10 +60,6 @@ delete pkg.devDependencies;
 delete pkg.peerDependencies;
 delete pkg.scripts;
 delete pkg.vitest;
-// 移除 pnpm 特定配置中的 node-llama-cpp
-if (pkg.pnpm && pkg.pnpm.onlyBuiltDependencies) {
-  pkg.pnpm.onlyBuiltDependencies = pkg.pnpm.onlyBuiltDependencies.filter(d => d !== 'node-llama-cpp');
-}
 console.log(JSON.stringify(pkg, null, 2));
 " > "$OUTPUT_DIR/$PACKAGE_NAME/package.json"
 

@@ -200,7 +200,7 @@ describe("security audit", () => {
 
   it("warns when small models are paired with web/browser tools", async () => {
     const cfg: OpenClawConfig = {
-      agents: { defaults: { model: { primary: "ollama/mistral-8b" } } },
+      agents: { defaults: { model: { primary: "openrouter/mistral-8b" } } },
       tools: {
         web: {
           search: { enabled: true },
@@ -226,7 +226,9 @@ describe("security audit", () => {
 
   it("treats small models as safe when sandbox is on and web tools are disabled", async () => {
     const cfg: OpenClawConfig = {
-      agents: { defaults: { model: { primary: "ollama/mistral-8b" }, sandbox: { mode: "all" } } },
+      agents: {
+        defaults: { model: { primary: "openrouter/mistral-8b" }, sandbox: { mode: "all" } },
+      },
       tools: {
         web: {
           search: { enabled: false },

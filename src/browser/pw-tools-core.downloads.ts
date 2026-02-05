@@ -1,4 +1,3 @@
-import type { Page } from "playwright-core";
 import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
@@ -16,6 +15,16 @@ import {
   requireRef,
   toAIFriendlyError,
 } from "./pw-tools-core.shared.js";
+
+// Local type shim to avoid a hard dependency on playwright-core in low-memory builds.
+type Page = {
+  on: (event: string, handler: unknown) => void;
+  off: (event: string, handler: unknown) => void;
+  waitForEvent: (event: string, options?: { timeout?: number }) => Promise<unknown>;
+  keyboard: {
+    press: (key: string) => Promise<void>;
+  };
+};
 
 function buildTempDownloadPath(fileName: string): string {
   const id = crypto.randomUUID();

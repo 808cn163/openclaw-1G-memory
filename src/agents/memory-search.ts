@@ -9,7 +9,7 @@ export type ResolvedMemorySearchConfig = {
   enabled: boolean;
   sources: Array<"memory" | "sessions">;
   extraPaths: string[];
-  provider: "openai" | "local" | "gemini" | "auto";
+  provider: "openai" | "gemini" | "siliconflow" | "auto";
   remote?: {
     baseUrl?: string;
     apiKey?: string;
@@ -25,12 +25,12 @@ export type ResolvedMemorySearchConfig = {
   experimental: {
     sessionMemory: boolean;
   };
-  fallback: "openai" | "gemini" | "local" | "none";
-  model: string;
-  local: {
-    modelPath?: string;
-    modelCacheDir?: string;
+  siliconflow: {
+    apiKey?: string;
+    model: string;
   };
+  fallback: "openai" | "gemini" | "siliconflow" | "none";
+  model: string;
   store: {
     driver: "sqlite";
     path: string;
@@ -72,6 +72,7 @@ export type ResolvedMemorySearchConfig = {
 
 const DEFAULT_OPENAI_MODEL = "text-embedding-3-small";
 const DEFAULT_GEMINI_MODEL = "gemini-embedding-001";
+const DEFAULT_SILICONFLOW_MODEL = "BAAI/bge-m3";
 const DEFAULT_CHUNK_TOKENS = 400;
 const DEFAULT_CHUNK_OVERLAP = 80;
 const DEFAULT_WATCH_DEBOUNCE_MS = 1500;
@@ -158,16 +159,20 @@ function mergeConfig(
       }
     : undefined;
   const fallback = overrides?.fallback ?? defaults?.fallback ?? "none";
+  const siliconflowModel =
+    overrides?.siliconflow?.model ?? defaults?.siliconflow?.model ?? DEFAULT_SILICONFLOW_MODEL;
   const modelDefault =
     provider === "gemini"
       ? DEFAULT_GEMINI_MODEL
       : provider === "openai"
         ? DEFAULT_OPENAI_MODEL
-        : undefined;
+        : provider === "siliconflow"
+          ? siliconflowModel
+          : undefined;
   const model = overrides?.model ?? defaults?.model ?? modelDefault ?? "";
-  const local = {
-    modelPath: overrides?.local?.modelPath ?? defaults?.local?.modelPath,
-    modelCacheDir: overrides?.local?.modelCacheDir ?? defaults?.local?.modelCacheDir,
+  const siliconflow = {
+    apiKey: overrides?.siliconflow?.apiKey ?? defaults?.siliconflow?.apiKey,
+    model: siliconflowModel,
   };
   const sources = normalizeSources(overrides?.sources ?? defaults?.sources, sessionMemory);
   const rawPaths = [...(defaults?.extraPaths ?? []), ...(overrides?.extraPaths ?? [])]
@@ -254,9 +259,9 @@ function mergeConfig(
     experimental: {
       sessionMemory,
     },
+    siliconflow,
     fallback,
     model,
-    local,
     store,
     chunking: { tokens: Math.max(1, chunking.tokens), overlap },
     sync: {

@@ -28,12 +28,14 @@ import {
 } from "./batch-openai.js";
 import { DEFAULT_GEMINI_EMBEDDING_MODEL } from "./embeddings-gemini.js";
 import { DEFAULT_OPENAI_EMBEDDING_MODEL } from "./embeddings-openai.js";
+import { DEFAULT_SILICONFLOW_EMBEDDING_MODEL } from "./embeddings-siliconflow.js";
 import {
   createEmbeddingProvider,
   type EmbeddingProvider,
   type EmbeddingProviderResult,
   type GeminiEmbeddingClient,
   type OpenAiEmbeddingClient,
+  type SiliconFlowEmbeddingClient,
 } from "./embeddings.js";
 import { bm25RankToScore, buildFtsQuery, mergeHybridResults } from "./hybrid.js";
 import {
@@ -94,9 +96,7 @@ const BATCH_FAILURE_LIMIT = 2;
 const SESSION_DELTA_READ_CHUNK_BYTES = 64 * 1024;
 const VECTOR_LOAD_TIMEOUT_MS = 30_000;
 const EMBEDDING_QUERY_TIMEOUT_REMOTE_MS = 60_000;
-const EMBEDDING_QUERY_TIMEOUT_LOCAL_MS = 5 * 60_000;
 const EMBEDDING_BATCH_TIMEOUT_REMOTE_MS = 2 * 60_000;
-const EMBEDDING_BATCH_TIMEOUT_LOCAL_MS = 10 * 60_000;
 
 const log = createSubsystemLogger("memory");
 
@@ -112,11 +112,12 @@ export class MemoryIndexManager implements MemorySearchManager {
   private readonly workspaceDir: string;
   private readonly settings: ResolvedMemorySearchConfig;
   private provider: EmbeddingProvider;
-  private readonly requestedProvider: "openai" | "local" | "gemini" | "auto";
-  private fallbackFrom?: "openai" | "local" | "gemini";
+  private readonly requestedProvider: "openai" | "gemini" | "siliconflow" | "auto";
+  private fallbackFrom?: "openai" | "gemini" | "siliconflow";
   private fallbackReason?: string;
   private openAi?: OpenAiEmbeddingClient;
   private gemini?: GeminiEmbeddingClient;
+  private siliconflow?: SiliconFlowEmbeddingClient;
   private batch: {
     enabled: boolean;
     wait: boolean;
@@ -182,9 +183,9 @@ export class MemoryIndexManager implements MemorySearchManager {
       agentDir: resolveAgentDir(cfg, agentId),
       provider: settings.provider,
       remote: settings.remote,
+      siliconflow: settings.siliconflow,
       model: settings.model,
       fallback: settings.fallback,
-      local: settings.local,
     });
     const manager = new MemoryIndexManager({
       cacheKey: key,
@@ -217,6 +218,7 @@ export class MemoryIndexManager implements MemorySearchManager {
     this.fallbackReason = params.providerResult.fallbackReason;
     this.openAi = params.providerResult.openAi;
     this.gemini = params.providerResult.gemini;
+    this.siliconflow = params.providerResult.siliconflow;
     this.sources = new Set(params.settings.sources);
     this.db = this.openDatabase();
     this.providerKey = this.computeProviderKey();
@@ -536,7 +538,7 @@ export class MemoryIndexManager implements MemorySearchManager {
         error: this.fts.loadError,
       },
       fallback: this.fallbackReason
-        ? { from: this.fallbackFrom ?? "local", reason: this.fallbackReason }
+        ? { from: this.fallbackFrom ?? this.provider.id, reason: this.fallbackReason }
         : undefined,
       vector: {
         enabled: this.vector.enabled,
@@ -1365,23 +1367,25 @@ export class MemoryIndexManager implements MemorySearchManager {
     if (this.fallbackFrom) {
       return false;
     }
-    const fallbackFrom = this.provider.id as "openai" | "gemini" | "local";
+    const fallbackFrom = this.provider.id as "openai" | "gemini" | "siliconflow";
 
     const fallbackModel =
       fallback === "gemini"
         ? DEFAULT_GEMINI_EMBEDDING_MODEL
         : fallback === "openai"
           ? DEFAULT_OPENAI_EMBEDDING_MODEL
-          : this.settings.model;
+          : fallback === "siliconflow"
+            ? this.settings.siliconflow.model || DEFAULT_SILICONFLOW_EMBEDDING_MODEL
+            : this.settings.model;
 
     const fallbackResult = await createEmbeddingProvider({
       config: this.cfg,
       agentDir: resolveAgentDir(this.cfg, this.agentId),
       provider: fallback,
       remote: this.settings.remote,
+      siliconflow: this.settings.siliconflow,
       model: fallbackModel,
       fallback: "none",
-      local: this.settings.local,
     });
 
     this.fallbackFrom = fallbackFrom;
@@ -1851,6 +1855,20 @@ export class MemoryIndexManager implements MemorySearchManager {
         }),
       );
     }
+    if (this.provider.id === "siliconflow" && this.siliconflow) {
+      const entries = Object.entries(this.siliconflow.headers)
+        .filter(([key]) => key.toLowerCase() !== "authorization")
+        .toSorted(([a], [b]) => a.localeCompare(b))
+        .map(([key, value]) => [key, value]);
+      return hashText(
+        JSON.stringify({
+          provider: "siliconflow",
+          baseUrl: this.siliconflow.baseUrl,
+          model: this.siliconflow.model,
+          headers: entries,
+        }),
+      );
+    }
     return hashText(JSON.stringify({ provider: this.provider.id, model: this.provider.model }));
   }
 
@@ -2070,11 +2088,10 @@ export class MemoryIndexManager implements MemorySearchManager {
   }
 
   private resolveEmbeddingTimeout(kind: "query" | "batch"): number {
-    const isLocal = this.provider.id === "local";
     if (kind === "query") {
-      return isLocal ? EMBEDDING_QUERY_TIMEOUT_LOCAL_MS : EMBEDDING_QUERY_TIMEOUT_REMOTE_MS;
+      return EMBEDDING_QUERY_TIMEOUT_REMOTE_MS;
     }
-    return isLocal ? EMBEDDING_BATCH_TIMEOUT_LOCAL_MS : EMBEDDING_BATCH_TIMEOUT_REMOTE_MS;
+    return EMBEDDING_BATCH_TIMEOUT_REMOTE_MS;
   }
 
   private async embedQueryWithTimeout(text: string): Promise<number[]> {

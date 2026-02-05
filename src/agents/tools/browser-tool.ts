@@ -210,9 +210,7 @@ function resolveBrowserBaseUrl(params: {
     throw new Error("Host browser control is disabled by sandbox policy.");
   }
   if (!resolved.enabled) {
-    throw new Error(
-      "Browser control is disabled. Set browser.enabled=true in ~/.openclaw/openclaw.json.",
-    );
+    throw new Error("Browser automation is disabled in this build.");
   }
   return undefined;
 }

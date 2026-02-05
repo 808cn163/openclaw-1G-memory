@@ -16,9 +16,9 @@ export function computeMemoryManagerCacheKey(params: {
       provider: settings.provider,
       model: settings.model,
       fallback: settings.fallback,
-      local: {
-        modelPath: settings.local.modelPath,
-        modelCacheDir: settings.local.modelCacheDir,
+      siliconflow: {
+        model: settings.siliconflow.model,
+        apiKeySet: Boolean(settings.siliconflow.apiKey?.trim()),
       },
       remote: settings.remote
         ? {

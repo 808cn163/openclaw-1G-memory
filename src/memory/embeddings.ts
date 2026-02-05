@@ -1,18 +1,14 @@
 import type { OpenClawConfig } from "../config/config.js";
 import { createGeminiEmbeddingProvider, type GeminiEmbeddingClient } from "./embeddings-gemini.js";
 import { createOpenAiEmbeddingProvider, type OpenAiEmbeddingClient } from "./embeddings-openai.js";
-
-function sanitizeAndNormalizeEmbedding(vec: number[]): number[] {
-  const sanitized = vec.map((value) => (Number.isFinite(value) ? value : 0));
-  const magnitude = Math.sqrt(sanitized.reduce((sum, value) => sum + value * value, 0));
-  if (magnitude < 1e-10) {
-    return sanitized;
-  }
-  return sanitized.map((value) => value / magnitude);
-}
+import {
+  createSiliconFlowEmbeddingProvider,
+  type SiliconFlowEmbeddingClient,
+} from "./embeddings-siliconflow.js";
 
 export type { GeminiEmbeddingClient } from "./embeddings-gemini.js";
 export type { OpenAiEmbeddingClient } from "./embeddings-openai.js";
+export type { SiliconFlowEmbeddingClient } from "./embeddings-siliconflow.js";
 
 export type EmbeddingProvider = {
   id: string;
@@ -23,24 +19,29 @@ export type EmbeddingProvider = {
 
 export type EmbeddingProviderResult = {
   provider: EmbeddingProvider;
-  requestedProvider: "openai" | "gemini" | "auto";
-  fallbackFrom?: "openai" | "gemini";
+  requestedProvider: "openai" | "gemini" | "siliconflow" | "auto";
+  fallbackFrom?: "openai" | "gemini" | "siliconflow";
   fallbackReason?: string;
   openAi?: OpenAiEmbeddingClient;
   gemini?: GeminiEmbeddingClient;
+  siliconflow?: SiliconFlowEmbeddingClient;
 };
 
 export type EmbeddingProviderOptions = {
   config: OpenClawConfig;
   agentDir?: string;
-  provider: "openai" | "gemini" | "auto";
+  provider: "openai" | "gemini" | "siliconflow" | "auto";
   remote?: {
     baseUrl?: string;
     apiKey?: string;
     headers?: Record<string, string>;
   };
+  siliconflow?: {
+    apiKey?: string;
+    model?: string;
+  };
   model: string;
-  fallback: "openai" | "gemini" | "none";
+  fallback: "openai" | "gemini" | "siliconflow" | "none";
 };
 
 function isMissingApiKeyError(err: unknown): boolean {
@@ -54,10 +55,14 @@ export async function createEmbeddingProvider(
   const requestedProvider = options.provider;
   const fallback = options.fallback;
 
-  const createProvider = async (id: "openai" | "gemini") => {
+  const createProvider = async (id: "openai" | "gemini" | "siliconflow") => {
     if (id === "gemini") {
       const { provider, client } = await createGeminiEmbeddingProvider(options);
       return { provider, gemini: client };
+    }
+    if (id === "siliconflow") {
+      const { provider, client } = await createSiliconFlowEmbeddingProvider(options);
+      return { provider, siliconflow: client };
     }
     const { provider, client } = await createOpenAiEmbeddingProvider(options);
     return { provider, openAi: client };
@@ -68,7 +73,7 @@ export async function createEmbeddingProvider(
   if (requestedProvider === "auto") {
     const missingKeyErrors: string[] = [];
 
-    for (const provider of ["openai", "gemini"] as const) {
+    for (const provider of ["openai", "gemini", "siliconflow"] as const) {
       try {
         const result = await createProvider(provider);
         return { ...result, requestedProvider };

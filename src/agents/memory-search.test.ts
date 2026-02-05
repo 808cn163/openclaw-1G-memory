@@ -124,12 +124,12 @@ describe("memory search config", () => {
     });
   });
 
-  it("keeps remote unset for local provider without overrides", () => {
+  it("keeps remote unset for siliconflow provider without overrides", () => {
     const cfg = {
       agents: {
         defaults: {
           memorySearch: {
-            provider: "local",
+            provider: "siliconflow",
           },
         },
       },
