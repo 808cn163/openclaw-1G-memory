@@ -168,6 +168,35 @@ install_runtime_deps() {
     echo -e "${SUCCESS}✓${NC} 依赖安装完成"
 }
 
+cleanup_old_wrappers() {
+    echo -e "${WARN}→${NC} 检查旧版本安装..."
+
+    # 常见的旧包装器位置
+    local old_locations=(
+        "$HOME/.local/bin/openclaw"
+        "$HOME/bin/openclaw"
+        "$HOME/openclaw/openclaw"
+        "$HOME/openclaw"
+    )
+
+    local found_old=0
+    for loc in "${old_locations[@]}"; do
+        if [[ -f "$loc" ]] || [[ -d "$loc" ]]; then
+            echo -e "${INFO}i${NC} 发现旧安装: $loc"
+            if [[ -f "$loc" ]]; then
+                rm -f "$loc" 2>/dev/null || true
+            fi
+            found_old=1
+        fi
+    done
+
+    if [[ "$found_old" -eq 1 ]]; then
+        echo -e "${SUCCESS}✓${NC} 已清理旧版本包装器"
+    else
+        echo -e "${SUCCESS}✓${NC} 未发现旧版本安装"
+    fi
+}
+
 create_bin_link() {
     echo -e "${WARN}→${NC} 创建命令入口..."
     require_sudo
@@ -184,6 +213,31 @@ WRAPPER
     maybe_sudo chmod +x "$BIN_LINK"
 
     echo -e "${SUCCESS}✓${NC} 命令 'openclaw' 已可用"
+}
+
+fix_invalid_config() {
+    echo -e "${WARN}→${NC} 检查配置文件..."
+
+    # 检查 config.yaml 是否存在且无效
+    if [[ -f "$CONFIG_DIR/config.yaml" ]]; then
+        # 检查文件是否以 # 开头（无效的 YAML/JSON5）
+        if head -c 1 "$CONFIG_DIR/config.yaml" | grep -q '#'; then
+            echo -e "${WARN}⚠${NC} 发现无效的 config.yaml，正在备份并删除..."
+            mv "$CONFIG_DIR/config.yaml" "$CONFIG_DIR/config.yaml.bak.$(date +%s)" 2>/dev/null || true
+            echo -e "${SUCCESS}✓${NC} 无效配置已备份"
+        fi
+    fi
+
+    # 检查 config.json 是否存在且无效
+    if [[ -f "$CONFIG_DIR/config.json" ]]; then
+        if ! node -e "require('$CONFIG_DIR/config.json')" 2>/dev/null; then
+            echo -e "${WARN}⚠${NC} 发现无效的 config.json，正在备份并删除..."
+            mv "$CONFIG_DIR/config.json" "$CONFIG_DIR/config.json.bak.$(date +%s)" 2>/dev/null || true
+            echo -e "${SUCCESS}✓${NC} 无效配置已备份"
+        fi
+    fi
+
+    echo -e "${SUCCESS}✓${NC} 配置文件检查完成"
 }
 
 create_default_config() {
@@ -216,19 +270,20 @@ CONFIG
 run_onboard() {
     if [[ "$NO_ONBOARD" == "1" ]]; then
         echo -e "${INFO}i${NC} 跳过配置向导 (--no-onboard)"
-        echo -e "稍后运行 ${INFO}openclaw onboard${NC} 完成配置。"
+        echo -e "稍后运行 ${INFO}$BIN_LINK onboard${NC} 完成配置。"
         return 0
     fi
 
     if [[ ! -r /dev/tty || ! -w /dev/tty ]]; then
         echo -e "${WARN}→${NC} 无 TTY 可用，跳过配置向导"
-        echo -e "稍后运行 ${INFO}openclaw onboard${NC} 完成配置。"
+        echo -e "稍后运行 ${INFO}$BIN_LINK onboard${NC} 完成配置。"
         return 0
     fi
 
     echo -e "${WARN}→${NC} 启动配置向导..."
     exec </dev/tty
-    exec openclaw onboard
+    # 使用完整路径，避免旧版本包装器干扰
+    exec "$BIN_LINK" onboard
 }
 
 main() {
@@ -244,6 +299,9 @@ main() {
 
     echo -e "${SUCCESS}✓${NC} 检测到: Linux (Ubuntu/Debian)"
 
+    # 步骤 0: 清理旧版本安装
+    cleanup_old_wrappers
+
     # 步骤 1: 检查/安装 Node.js
     if ! check_node; then
         install_node
@@ -258,7 +316,10 @@ main() {
     # 步骤 4: 创建命令入口
     create_bin_link
 
-    # 步骤 5: 创建默认配置
+    # 步骤 5: 修复无效配置
+    fix_invalid_config
+
+    # 步骤 6: 创建默认配置
     create_default_config
 
     echo ""
@@ -275,7 +336,7 @@ main() {
     echo -e "文档: ${INFO}https://docs.openclaw.ai${NC}"
     echo ""
 
-    # 步骤 6: 运行配置向导
+    # 步骤 7: 运行配置向导
     run_onboard
 }
 
