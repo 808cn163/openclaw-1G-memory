@@ -54,6 +54,9 @@ cp -r dist "$OUTPUT_DIR/$PACKAGE_NAME/"
 # 入口文件
 cp openclaw.mjs "$OUTPUT_DIR/$PACKAGE_NAME/"
 
+# 内置插件（必须包含 memory-core，否则首次配置会因 plugins.slots.memory 校验失败）
+cp -r extensions "$OUTPUT_DIR/$PACKAGE_NAME/"
+
 # 资源文件
 cp -r assets "$OUTPUT_DIR/$PACKAGE_NAME/" 2>/dev/null || true
 cp -r skills "$OUTPUT_DIR/$PACKAGE_NAME/" 2>/dev/null || true
@@ -86,6 +89,13 @@ if [[ ! -d "$OUTPUT_DIR/$PACKAGE_NAME/node_modules/chalk" ]]; then
     exit 1
 fi
 echo "✓ 运行时依赖已预装"
+
+# 防回归：确保关键内置插件已打入包中
+if [[ ! -f "$OUTPUT_DIR/$PACKAGE_NAME/extensions/memory-core/openclaw.plugin.json" ]]; then
+    echo "✗ 预编译包不完整: 缺少 extensions/memory-core/openclaw.plugin.json"
+    exit 1
+fi
+echo "✓ 已包含内置 memory-core 插件"
 
 # 复制部署脚本
 cp "$DEPLOY_SCRIPT_TMP" "$OUTPUT_DIR/deploy-ubuntu.sh"

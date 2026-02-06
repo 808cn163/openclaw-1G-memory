@@ -2,6 +2,10 @@
 
 OpenClaw 是一个轻量级的 WhatsApp 网关和智能代理运行时环境，专为低资源环境（如 1G 内存 VPS）进行了优化。它支持多种 AI 模型（OpenAI, Gemini, SiliconFlow 等）并集成了向量记忆功能。
 
+- 项目名称：`openclaw`
+- 配置目录：`~/.openclaw`
+- GitHub 仓库：`https://github.com/808cn163/openclaw-1G-memory`
+
 ## ✨ 主要特性
 
 - **轻量级架构**: 移除冗余依赖，专为小内存服务器优化。
@@ -34,6 +38,40 @@ curl -fsSL https://github.com/808cn163/openclaw-1G-memory/releases/latest/downlo
 4. 保留并迁移原有 `~/.openclaw` 配置
 
 > 注意：不要使用仓库 `main/deploy-ubuntu.sh` 的 raw 链接，该文件已移除，发布渠道以 Release 资产为准。
+
+## 📦 预编译安装（低内存机器推荐）
+
+当目标机器内存小于 1GB 时，建议使用预编译产物，避免在目标机执行构建。
+
+### 方式一：直接使用最新 Release（推荐）
+
+```bash
+curl -fsSL https://github.com/808cn163/openclaw-1G-memory/releases/latest/download/deploy-ubuntu.sh | bash
+```
+
+### 方式二：指定版本安装
+
+```bash
+curl -fsSL https://github.com/808cn163/openclaw-1G-memory/releases/latest/download/deploy-ubuntu.sh | bash -s -- --version v2026.2.3-lite
+```
+
+### 方式三：离线/半离线安装
+
+```bash
+# 在可联网机器下载
+wget https://github.com/808cn163/openclaw-1G-memory/releases/latest/download/deploy-ubuntu.sh
+wget https://github.com/808cn163/openclaw-1G-memory/releases/latest/download/openclaw-ubuntu-lite.tar.gz
+
+# 拷贝到目标机后执行
+bash deploy-ubuntu.sh --version latest
+```
+
+安装完成后可验证：
+
+```bash
+openclaw --version
+openclaw status
+```
 
 ### 手动安装
 
