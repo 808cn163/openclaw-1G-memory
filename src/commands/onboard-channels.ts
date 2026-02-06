@@ -43,13 +43,11 @@ type ChannelStatusSummary = {
 };
 
 const QUICKSTART_LOW_MEMORY_PRIORITY: Partial<Record<ChannelChoice, number>> = {
+  // 低内存版本: 只保留 4 个常用渠道
   telegram: 100,
   whatsapp: 90,
-  discord: 80,
-  slack: 70,
-  signal: 60,
-  imessage: 40,
-  googlechat: 30,
+  slack: 80,
+  discord: 70,
 };
 
 function formatAccountLabel(accountId: string): string {
