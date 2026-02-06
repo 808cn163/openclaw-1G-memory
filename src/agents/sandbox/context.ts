@@ -1,7 +1,6 @@
 import fs from "node:fs/promises";
 import type { OpenClawConfig } from "../../config/config.js";
 import type { SandboxContext, SandboxWorkspaceInfo } from "./types.js";
-import { DEFAULT_BROWSER_EVALUATE_ENABLED } from "../../browser/constants.js";
 import { defaultRuntime } from "../../runtime.js";
 import { resolveUserPath } from "../../utils.js";
 import { syncSkillsToWorkspace } from "../skills.js";
@@ -73,8 +72,7 @@ export async function resolveSandboxContext(params: {
     cfg,
   });
 
-  const evaluateEnabled =
-    params.config?.browser?.evaluateEnabled ?? DEFAULT_BROWSER_EVALUATE_ENABLED;
+  const evaluateEnabled = params.config?.browser?.evaluateEnabled ?? false;
   const browser = await ensureSandboxBrowser({
     scopeKey,
     workspaceDir,

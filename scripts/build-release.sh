@@ -8,6 +8,16 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 OUTPUT_DIR="${PROJECT_DIR}/release"
 PACKAGE_NAME="openclaw-ubuntu-lite"
+DEPLOY_SCRIPT_PATH="${PROJECT_DIR}/release/deploy-ubuntu.sh"
+
+if [[ ! -f "$DEPLOY_SCRIPT_PATH" ]]; then
+    echo "✗ 缺少部署脚本: $DEPLOY_SCRIPT_PATH"
+    exit 1
+fi
+
+DEPLOY_SCRIPT_TMP="$(mktemp)"
+cp "$DEPLOY_SCRIPT_PATH" "$DEPLOY_SCRIPT_TMP"
+trap 'rm -f "$DEPLOY_SCRIPT_TMP"' EXIT
 
 echo "🦞 OpenClaw 低内存版本构建脚本"
 echo "================================"
@@ -60,11 +70,26 @@ delete pkg.devDependencies;
 delete pkg.peerDependencies;
 delete pkg.scripts;
 delete pkg.vitest;
+delete pkg.pnpm;
 console.log(JSON.stringify(pkg, null, 2));
 " > "$OUTPUT_DIR/$PACKAGE_NAME/package.json"
 
+# 在高性能机器预安装运行时依赖，避免低内存机器 npm install OOM
+echo "→ 预安装运行时依赖..."
+(
+  cd "$OUTPUT_DIR/$PACKAGE_NAME"
+  npm install --omit=dev --ignore-scripts --no-fund --no-audit --loglevel=error
+)
+
+if [[ ! -d "$OUTPUT_DIR/$PACKAGE_NAME/node_modules/chalk" ]]; then
+    echo "✗ 预安装依赖失败: 缺少 node_modules/chalk"
+    exit 1
+fi
+echo "✓ 运行时依赖已预装"
+
 # 复制部署脚本
-cp deploy-ubuntu.sh "$OUTPUT_DIR/"
+cp "$DEPLOY_SCRIPT_TMP" "$OUTPUT_DIR/deploy-ubuntu.sh"
+chmod +x "$OUTPUT_DIR/deploy-ubuntu.sh"
 
 echo "✓ 文件复制完成"
 

@@ -1,26 +1,29 @@
-import { loadConfig } from "../config/config.js";
-import { createSubsystemLogger } from "../logging/subsystem.js";
-import { resolveBrowserConfig } from "./config.js";
+export type BrowserControlContext = {
+  enabled: false;
+  reason: string;
+};
 
-const log = createSubsystemLogger("browser");
-const logService = log.child("service");
+const DISABLED_REASON = "Browser automation is disabled in this low-memory build.";
 
-export function getBrowserControlState(): null {
-  return null;
+export function createBrowserControlContext(): BrowserControlContext {
+  return {
+    enabled: false,
+    reason: DISABLED_REASON,
+  };
 }
 
-export function createBrowserControlContext(): never {
-  throw new Error("Browser automation is disabled in this build.");
+export async function startBrowserControlServiceFromConfig(): Promise<boolean> {
+  return false;
 }
 
-export async function startBrowserControlServiceFromConfig(): Promise<null> {
-  const cfg = loadConfig();
-  const resolved = resolveBrowserConfig(cfg.browser, cfg);
-  if (!resolved.enabled) {
-    return null;
-  }
-  logService.warn("Browser automation is disabled in this build; ignoring browser.enabled=true.");
-  return null;
+export async function startBrowserControlServerFromConfig(): Promise<boolean> {
+  return false;
 }
 
-export async function stopBrowserControlService(): Promise<void> {}
+export async function stopBrowserControlService(): Promise<void> {
+  return;
+}
+
+export async function stopBrowserControlServer(): Promise<void> {
+  return;
+}

@@ -1,206 +1,89 @@
-# 🦞 OpenClaw 低内存版本 — 个人 AI 助手
+# OpenClaw - 智能代理网关 (1G 内存优化版)
 
-<p align="center">
-  <img src="README-header.png" alt="OpenClaw" width="520">
-</p>
+OpenClaw 是一个轻量级的 WhatsApp 网关和智能代理运行时环境，专为低资源环境（如 1G 内存 VPS）进行了优化。它支持多种 AI 模型（OpenAI, Gemini, SiliconFlow 等）并集成了向量记忆功能。
 
-<p align="center">
-  <strong>适用于小于 1GB 内存的 Ubuntu / Debian VPS</strong>
-</p>
+## ✨ 主要特性
 
-<p align="center">
-  <a href="https://github.com/808cn163/openclaw-1G-memory/releases"><img src="https://img.shields.io/github/v/release/808cn163/openclaw-1G-memory?include_prereleases&style=for-the-badge" alt="GitHub release"></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge" alt="MIT License"></a>
-</p>
+- **轻量级架构**: 移除冗余依赖，专为小内存服务器优化。
+- **多模型支持**: 内置支持 OpenAI, Gemini, SiliconFlow 等主流大模型。
+- **WhatsApp 集成**: 基于 Baileys 的稳定 WhatsApp Web 协议接入。
+- **向量记忆**: 支持基于 embeddings 的长期记忆检索。
+- **插件系统**: 灵活的插件扩展机制。
 
-**OpenClaw 低内存版本** 是专为资源受限的服务器环境裁剪的 OpenClaw 发行版。通过**预编译包**避免在小内存机器上构建时的高内存消耗，让 <1GB 内存的 VPS 也能稳定运行。
+## 🚀 快速上手
 
-## 与完整版的区别
+### 环境要求
 
-| 功能                      | 完整版               | 低内存版                           |
-| ------------------------- | -------------------- | ---------------------------------- |
-| 本地 LLM (node-llama-cpp) | ✅ 支持              | ❌ 已移除                          |
-| Ollama 集成               | ✅ 支持              | ❌ 已移除                          |
-| 浏览器自动化              | ✅ 支持              | ❌ 已移除                          |
-| Embedding                 | 本地/API             | 仅 API (OpenAI/Gemini/SiliconFlow) |
-| 安装方式                  | npm install (需编译) | 预编译包 (无需编译)                |
-| 内存需求                  | >2GB (编译时)        | <1GB (运行时)                      |
-
-## 预编译安装（推荐）
+- Ubuntu 20.04 或更高版本
+- Node.js 22+
+- 至少 1GB 内存
 
 ### 一键部署
 
-```bash
-curl -fsSL https://github.com/808cn163/openclaw-1G-memory/releases/latest/download/deploy-ubuntu.sh | bash
-```
-
-### 跳过配置向导
+我们在 Ubuntu 上提供了一键部署脚本，自动处理环境安装和配置：
 
 ```bash
-curl -fsSL https://github.com/808cn163/openclaw-1G-memory/releases/latest/download/deploy-ubuntu.sh | bash -s -- --no-onboard
+curl -sL https://raw.githubusercontent.com/808cn163/openclaw-1G-memory/main/deploy-ubuntu.sh | bash
 ```
 
-### 手动安装（预编译包）
+该脚本将自动执行以下操作：
 
-1. 下载预编译包：
+1. 安装 Node.js 和系统依赖
+2. 克隆代码仓库
+3. 安装项目依赖 (自动优化内存占用)
+4. 引导进行初始配置 (WhatsApp 登录、API Key 设置等)
+
+### 手动安装
+
+如果您偏好手动控制，可以按照以下步骤操作：
 
 ```bash
-wget https://github.com/808cn163/openclaw-1G-memory/releases/latest/download/openclaw-ubuntu-lite.tar.gz
+# 1. 克隆代码
+git clone https://github.com/808cn163/openclaw-1G-memory.git openclaw
+cd openclaw
+
+# 2. 安装依赖 (生产环境)
+npm install --omit=dev
+
+# 3. 构建项目
+npm run build
+
+# 4. 运行配置向导
+./bin/openclaw onboard
+
+# 5. 启动服务
+./bin/openclaw gateway run
 ```
 
-2. 解压到安装目录：
+## ⚙️ 配置说明
 
-```bash
-sudo mkdir -p /opt/openclaw
-sudo tar -xzf openclaw-ubuntu-lite.tar.gz -C /opt/openclaw --strip-components=1
-```
+核心配置文件位于 `~/.openclaw/config.yaml`。您可以通过 `openclaw config` 命令进行管理。
 
-3. 安装运行时依赖：
+### 常用配置命令
 
-```bash
-cd /opt/openclaw
-sudo npm install --omit=dev --ignore-scripts --no-fund --no-audit
-```
+- **设置 API Key**:
 
-4. 创建命令入口：
+  ```bash
+  openclaw config set agents.defaults.llm.provider siliconflow
+  openclaw config set agents.defaults.llm.apiKey sk-xxxxxxxx
+  ```
 
-```bash
-sudo ln -sf /opt/openclaw/openclaw.mjs /usr/local/bin/openclaw
-```
+- **启用/禁用功能**:
+  ```bash
+  openclaw config set agents.defaults.memorySearch.enabled true
+  ```
 
-5. 运行配置向导：
+## ❓ 常见问题
 
-```bash
-openclaw onboard
-```
+**Q: 安装依赖时出现 `ERR_MODULE_NOT_FOUND` 或内存溢出？**
+A: 请确保使用 `npm install --omit=dev` 来跳过开发依赖，这可以显著降低内存占用。如果仍然遇到问题，尝试增加 swap 空间。
 
-## 系统要求
+**Q: 如何保持后台运行？**
+A: 推荐使用 `pm2` 或 `systemd` 来管理进程。一键脚本会自动配置 systemd 服务。
 
-- **操作系统**: Ubuntu 20.04+ / Debian 11+
-- **Node.js**: 22.0.0+
-- **内存**: 512MB+ (运行时)
-- **磁盘**: 500MB+
+**Q: WhatsApp 连接断开怎么办？**
+A: 运行 `openclaw gateway run --force` 重新启动网关，或者通过 `openclaw status` 检查连接状态。
 
-## Embedding 配置
+---
 
-本版本仅支持 **API 模式** embedding，支持以下提供商：
-
-- `openai`
-- `gemini`
-- `siliconflow`（新增）
-
-配置文件位于 `~/.openclaw/openclaw.json`。
-
-### 使用 OpenAI（推荐）
-
-```json
-{
-  "agents": {
-    "defaults": {
-      "memorySearch": {
-        "provider": "openai"
-      }
-    }
-  }
-}
-```
-
-### 使用 Gemini
-
-```json
-{
-  "agents": {
-    "defaults": {
-      "memorySearch": {
-        "provider": "gemini"
-      }
-    }
-  }
-}
-```
-
-### 使用 SiliconFlow
-
-```json
-{
-  "agents": {
-    "defaults": {
-      "memorySearch": {
-        "provider": "siliconflow",
-        "siliconflow": {
-          "apiKey": "YOUR_SILICONFLOW_API_KEY",
-          "model": "BAAI/bge-m3"
-        }
-      }
-    }
-  }
-}
-```
-
-> `model` 可选，默认 `BAAI/bge-m3`。
-
-## 常用命令
-
-```bash
-# 查看版本
-openclaw --version
-
-# 运行配置向导
-openclaw onboard
-
-# 启动网关
-openclaw gateway --verbose
-
-# 发送消息
-openclaw message send --to +1234567890 --message "Hello"
-
-# 运行诊断
-openclaw doctor
-```
-
-## 配置文件
-
-配置文件位于 `~/.openclaw/openclaw.json`。
-
-> 浏览器自动化已移除，相关配置会被忽略。
-
-## 预编译包说明
-
-发布包 `openclaw-ubuntu-lite.tar.gz` 已包含编译产物 (`dist/`) 和入口脚本 (`openclaw.mjs`)。安装时只需执行运行时依赖安装，无需在小内存机器上构建。
-
-## 从源码构建（在高性能机器上执行）
-
-如果需要自定义构建：
-
-```bash
-git clone https://github.com/808cn163/openclaw-1G-memory.git
-cd openclaw-1G-memory
-./scripts/build-release.sh
-```
-
-构建完成后，在 `release/` 目录中获得：
-
-- `openclaw-ubuntu-lite.tar.gz`
-- `deploy-ubuntu.sh`
-
-## 更新
-
-重新运行部署脚本即可更新：
-
-```bash
-curl -fsSL https://github.com/808cn163/openclaw-1G-memory/releases/latest/download/deploy-ubuntu.sh | bash
-```
-
-## 相关链接
-
-- 本项目仓库: https://github.com/808cn163/openclaw-1G-memory
-- 官方文档: https://docs.openclaw.ai
-- FAQ: https://docs.openclaw.ai/start/faq
-
-## 许可证
-
-MIT License - 详见 [LICENSE](LICENSE) 文件。
-
-## 致谢
-
-本项目基于 OpenClaw 开源项目裁剪，感谢 Peter Steinberger 和社区贡献者的工作。
+_本项目由 OpenClaw 社区维护，专为高效能低资源环境打造。_

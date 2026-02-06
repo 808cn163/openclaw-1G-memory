@@ -35,6 +35,7 @@ NO_PROMPT="${OPENCLAW_NO_PROMPT:-0}"
 DRY_RUN="${OPENCLAW_DRY_RUN:-0}"
 NO_ONBOARD=${OPENCLAW_NO_ONBOARD:-0}
 OPENCLAW_BIN=""
+STAGING_DIR=""
 
 ORIGINAL_PATH="${PATH:-}"
 
@@ -45,7 +46,17 @@ cleanup_tmpfiles() {
         rm -f "$f" 2>/dev/null || true
     done
 }
-trap cleanup_tmpfiles EXIT
+cleanup_staging_dir() {
+    if [[ -n "${STAGING_DIR:-}" && -d "${STAGING_DIR}" ]]; then
+        rm -rf "${STAGING_DIR}" 2>/dev/null || true
+    fi
+}
+
+cleanup_on_exit() {
+    cleanup_staging_dir
+    cleanup_tmpfiles
+}
+trap cleanup_on_exit EXIT
 
 mktempfile() {
     local f
@@ -283,23 +294,77 @@ download_and_extract() {
     }
 
     echo -e "${SUCCESS}✓${NC} 下载完成"
-    echo -e "${WARN}→${NC} 解压到 ${INSTALL_DIR}..."
+    echo -e "${WARN}→${NC} 解压到临时目录..."
 
-    require_sudo
-    maybe_sudo rm -rf "$INSTALL_DIR"
-    maybe_sudo mkdir -p "$INSTALL_DIR"
-    maybe_sudo tar -xzf "$tmp_tar" -C "$INSTALL_DIR" --strip-components=1
+    STAGING_DIR="$(mktemp -d)"
+    tar -xzf "$tmp_tar" -C "$STAGING_DIR" --strip-components=1
 
-    echo -e "${SUCCESS}✓${NC} 解压完成"
+    echo -e "${SUCCESS}✓${NC} 解压完成 (staging: ${STAGING_DIR})"
+}
+
+verify_runtime_deps() {
+    local target_dir="$1"
+    local -a required_modules=("chalk" "commander")
+    local -a missing=()
+
+    local module_name
+    for module_name in "${required_modules[@]}"; do
+        if [[ ! -d "${target_dir}/node_modules/${module_name}" ]]; then
+            missing+=("${module_name}")
+        fi
+    done
+
+    if [[ "${#missing[@]}" -gt 0 ]]; then
+        echo -e "${ERROR}错误: 运行时依赖不完整，缺少: ${missing[*]}${NC}"
+        return 1
+    fi
+    return 0
 }
 
 install_runtime_deps() {
+    local target_dir="${STAGING_DIR:-$INSTALL_DIR}"
+
+    if verify_runtime_deps "$target_dir"; then
+        echo -e "${SUCCESS}✓${NC} 预编译包已包含运行时依赖，跳过 npm 安装"
+        return 0
+    fi
+
     echo -e "${WARN}→${NC} 安装运行时依赖 (--omit=dev --ignore-scripts)..."
 
-    cd "$INSTALL_DIR"
-    SHARP_IGNORE_GLOBAL_LIBVIPS="$SHARP_IGNORE_GLOBAL_LIBVIPS" npm --loglevel "$NPM_LOGLEVEL" ${NPM_SILENT_FLAG:+$NPM_SILENT_FLAG} --no-fund --no-audit install --omit=dev --ignore-scripts
+    cd "$target_dir"
+
+    local npm_mode="install"
+    if [[ -f package-lock.json || -f npm-shrinkwrap.json ]]; then
+        npm_mode="ci"
+    else
+        echo -e "${WARN}→${NC} 未检测到 lockfile，将使用 npm install（小内存机器可能更容易 OOM）"
+    fi
+
+    if ! SHARP_IGNORE_GLOBAL_LIBVIPS="$SHARP_IGNORE_GLOBAL_LIBVIPS" npm --loglevel "$NPM_LOGLEVEL" ${NPM_SILENT_FLAG:+$NPM_SILENT_FLAG} --no-fund --no-audit "$npm_mode" --omit=dev --ignore-scripts; then
+        echo -e "${ERROR}错误: 运行时依赖安装失败${NC}"
+        echo -e "${WARN}建议:${NC} 请在高性能机器重新打包（包含 node_modules），再发布到 GitHub Release。"
+        return 1
+    fi
+
+    verify_runtime_deps "$target_dir"
 
     echo -e "${SUCCESS}✓${NC} 依赖安装完成"
+}
+
+promote_install_tree() {
+    local target_dir="${STAGING_DIR:-$INSTALL_DIR}"
+
+    if [[ "$target_dir" == "$INSTALL_DIR" ]]; then
+        return 0
+    fi
+
+    echo -e "${WARN}→${NC} 安装到 ${INSTALL_DIR}..."
+    require_sudo
+    maybe_sudo rm -rf "$INSTALL_DIR"
+    maybe_sudo mkdir -p "$(dirname "$INSTALL_DIR")"
+    maybe_sudo mv "$target_dir" "$INSTALL_DIR"
+    STAGING_DIR=""
+    echo -e "${SUCCESS}✓${NC} 安装目录就绪"
 }
 
 cleanup_old_wrappers() {
@@ -497,6 +562,7 @@ main() {
 
     download_and_extract
     install_runtime_deps
+    promote_install_tree
     create_bin_link
 
     OPENCLAW_BIN="$(resolve_openclaw_bin || true)"
