@@ -40,12 +40,41 @@ echo "→ 构建 UI..."
 pnpm ui:build || echo "⚠ UI 构建失败，继续..."
 echo "✓ UI 构建完成"
 
-# 步骤 4: 创建输出目录
+# 步骤 4: 编译内置插件 (memory-core)
+echo "→ 编译内置插件..."
+MEMORY_CORE_DIR="${PROJECT_DIR}/extensions/memory-core"
+if [[ -f "$MEMORY_CORE_DIR/index.ts" ]]; then
+    # 使用 esbuild 编译 TypeScript 插件为 JavaScript
+    pnpm exec esbuild "$MEMORY_CORE_DIR/index.ts" \
+        --outfile="$MEMORY_CORE_DIR/index.js" \
+        --format=esm \
+        --platform=node \
+        --target=node22 \
+        --bundle \
+        --external:openclaw \
+        --external:"openclaw/*"
+
+    # 更新 package.json 指向编译后的 .js 文件
+    node -e "
+const fs = require('fs');
+const pkgPath = '${MEMORY_CORE_DIR}/package.json';
+const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+if (pkg.openclaw && pkg.openclaw.extensions) {
+    pkg.openclaw.extensions = pkg.openclaw.extensions.map(e => e.replace(/\\.ts$/, '.js'));
+}
+fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\\n');
+"
+    echo "✓ memory-core 插件编译完成"
+else
+    echo "⚠ memory-core/index.ts 不存在，跳过编译"
+fi
+
+# 步骤 5: 创建输出目录
 echo "→ 准备打包..."
 rm -rf "$OUTPUT_DIR"
 mkdir -p "$OUTPUT_DIR/$PACKAGE_NAME"
 
-# 步骤 5: 复制必要文件
+# 步骤 6: 复制必要文件
 echo "→ 复制文件..."
 
 # 编译产物
@@ -55,7 +84,11 @@ cp -r dist "$OUTPUT_DIR/$PACKAGE_NAME/"
 cp openclaw.mjs "$OUTPUT_DIR/$PACKAGE_NAME/"
 
 # 内置插件（必须包含 memory-core，否则首次配置会因 plugins.slots.memory 校验失败）
-cp -r extensions "$OUTPUT_DIR/$PACKAGE_NAME/"
+# 只复制必要文件，不复制 node_modules 和源文件
+mkdir -p "$OUTPUT_DIR/$PACKAGE_NAME/extensions/memory-core"
+cp "$MEMORY_CORE_DIR/index.js" "$OUTPUT_DIR/$PACKAGE_NAME/extensions/memory-core/"
+cp "$MEMORY_CORE_DIR/package.json" "$OUTPUT_DIR/$PACKAGE_NAME/extensions/memory-core/"
+cp "$MEMORY_CORE_DIR/openclaw.plugin.json" "$OUTPUT_DIR/$PACKAGE_NAME/extensions/memory-core/"
 
 # 资源文件
 cp -r assets "$OUTPUT_DIR/$PACKAGE_NAME/" 2>/dev/null || true

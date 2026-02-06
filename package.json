@@ -160,6 +160,7 @@
     "@types/ws": "^8.18.1",
     "@typescript/native-preview": "7.0.0-dev.20260202.1",
     "@vitest/coverage-v8": "^4.0.18",
+    "esbuild": "^0.27.3",
     "lit": "^3.3.2",
     "oxfmt": "0.28.0",
     "oxlint": "^1.43.0",
