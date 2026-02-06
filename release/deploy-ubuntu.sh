@@ -448,8 +448,12 @@ run_doctor() {
         warn_openclaw_not_found
         return 0
     fi
-    "$claw" doctor --non-interactive || true
-    echo -e "${SUCCESS}✓${NC} Migration complete"
+    # 添加超时防止卡住，忽略配置验证错误
+    if timeout 30 "$claw" doctor --non-interactive 2>&1; then
+        echo -e "${SUCCESS}✓${NC} Migration complete"
+    else
+        echo -e "${WARN}→${NC} Doctor 运行失败或超时，请稍后手动运行: ${INFO}openclaw doctor${NC}"
+    fi
 }
 
 resolve_workspace_dir() {
@@ -518,8 +522,9 @@ is_gateway_daemon_loaded() {
         return 1
     fi
 
+    # 添加超时防止卡住
     local status_json=""
-    status_json="$($claw daemon status --json 2>/dev/null || true)"
+    status_json="$(timeout 5 "$claw" daemon status --json 2>/dev/null || true)"
     if [[ -z "$status_json" ]]; then
         return 1
     fi
@@ -634,7 +639,7 @@ main() {
         fi
         if [[ -n "$claw" ]] && is_gateway_daemon_loaded "$claw"; then
             echo -e "${INFO}i${NC} Gateway daemon detected; restarting..."
-            if OPENCLAW_UPDATE_IN_PROGRESS=1 "$claw" daemon restart >/dev/null 2>&1; then
+            if timeout 10 env OPENCLAW_UPDATE_IN_PROGRESS=1 "$claw" daemon restart >/dev/null 2>&1; then
                 echo -e "${SUCCESS}✓${NC} Gateway restarted."
             else
                 echo -e "${WARN}→${NC} Gateway restart failed; try: ${INFO}openclaw daemon restart${NC}"
