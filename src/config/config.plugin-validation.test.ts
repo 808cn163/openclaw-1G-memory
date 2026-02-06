@@ -149,6 +149,25 @@ describe("config plugin validation", () => {
     });
   });
 
+  it("accepts built-in channel ids in plugins.entries for compatibility", async () => {
+    await withTempHome(async (home) => {
+      process.env.OPENCLAW_STATE_DIR = path.join(home, ".openclaw");
+      vi.resetModules();
+      const { validateConfigObjectWithPlugins } = await import("./config.js");
+      const res = validateConfigObjectWithPlugins({
+        agents: { list: [{ id: "pi" }] },
+        plugins: {
+          enabled: false,
+          entries: {
+            telegram: { enabled: true },
+            whatsapp: { enabled: true },
+          },
+        },
+      });
+      expect(res.ok).toBe(true);
+    });
+  });
+
   it("accepts plugin heartbeat targets", async () => {
     await withTempHome(async (home) => {
       process.env.OPENCLAW_STATE_DIR = path.join(home, ".openclaw");

@@ -14,6 +14,7 @@ import { listChannelPluginCatalogEntries } from "../channels/plugins/catalog.js"
 import { resolveChannelDefaultAccountId } from "../channels/plugins/helpers.js";
 import { listChannelPlugins, getChannelPlugin } from "../channels/plugins/index.js";
 import {
+  CHAT_CHANNEL_ORDER,
   formatChannelPrimerLine,
   formatChannelSelectionLine,
   listChatChannels,
@@ -444,6 +445,9 @@ export async function setupChannels(
   };
 
   const ensureBundledPluginEnabled = async (channel: ChannelChoice): Promise<boolean> => {
+    if (CHAT_CHANNEL_ORDER.includes(channel)) {
+      return true;
+    }
     if (getChannelPlugin(channel)) {
       return true;
     }
