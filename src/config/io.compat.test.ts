@@ -60,4 +60,24 @@ describe("config io paths", () => {
       expect(io.loadConfig().gateway?.port).toBe(20002);
     });
   });
+
+  it("loads yaml config when OPENCLAW_CONFIG_PATH points to .yaml", async () => {
+    await withTempHome(async (home) => {
+      const dir = path.join(home, ".openclaw");
+      await fs.mkdir(dir, { recursive: true });
+      const configPath = path.join(dir, "config.yaml");
+      await fs.writeFile(
+        configPath,
+        ["# legacy yaml config", "gateway:", "  mode: local", "  port: 18789"].join("\n"),
+      );
+      const io = createConfigIO({
+        env: { OPENCLAW_CONFIG_PATH: configPath } as NodeJS.ProcessEnv,
+        homedir: () => home,
+      });
+      expect(io.configPath).toBe(configPath);
+      const cfg = io.loadConfig();
+      expect(cfg.gateway?.mode).toBe("local");
+      expect(cfg.gateway?.port).toBe(18789);
+    });
+  });
 });

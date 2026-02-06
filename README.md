@@ -18,20 +18,22 @@ OpenClaw 是一个轻量级的 WhatsApp 网关和智能代理运行时环境，�
 - Node.js 22+
 - 至少 1GB 内存
 
-### 一键部署
+### 一键部署（推荐）
 
-我们在 Ubuntu 上提供了一键部署脚本，自动处理环境安装和配置：
+请使用 GitHub Release 的预编译安装脚本（适合 <1GB 内存环境）：
 
 ```bash
-curl -sL https://raw.githubusercontent.com/808cn163/openclaw-1G-memory/main/deploy-ubuntu.sh | bash
+curl -fsSL https://github.com/808cn163/openclaw-1G-memory/releases/latest/download/deploy-ubuntu.sh | bash
 ```
 
 该脚本将自动执行以下操作：
 
-1. 安装 Node.js 和系统依赖
-2. 克隆代码仓库
-3. 安装项目依赖 (自动优化内存占用)
-4. 引导进行初始配置 (WhatsApp 登录、API Key 设置等)
+1. 检查并安装 Node.js 22+
+2. 下载预编译包并安装到 `/opt/openclaw`
+3. 创建 `openclaw` 命令入口
+4. 保留并迁移原有 `~/.openclaw` 配置
+
+> 注意：不要使用仓库 `main/deploy-ubuntu.sh` 的 raw 链接，该文件已移除，发布渠道以 Release 资产为准。
 
 ### 手动安装
 
@@ -57,7 +59,7 @@ npm run build
 
 ## ⚙️ 配置说明
 
-核心配置文件位于 `~/.openclaw/config.yaml`。您可以通过 `openclaw config` 命令进行管理。
+核心配置文件默认位于 `~/.openclaw/openclaw.json`。您可以通过 `openclaw config` 命令进行管理。
 
 ### 常用配置命令
 

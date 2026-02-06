@@ -3,6 +3,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import YAML from "yaml";
 import type { OpenClawConfig, ConfigFileSnapshot, LegacyConfigIssue } from "./types.js";
 import {
   loadShellEnvFallback,
@@ -59,6 +60,10 @@ const CONFIG_BACKUP_COUNT = 5;
 const loggedInvalidConfigs = new Set<string>();
 
 export type ParseConfigJson5Result = { ok: true; parsed: unknown } | { ok: false; error: string };
+
+type ParseConfigDocumentResult =
+  | { ok: true; parsed: unknown; format: "json5" | "yaml" }
+  | { ok: false; error: string };
 
 function hashConfigRaw(raw: string | null): string {
   return crypto
@@ -200,6 +205,49 @@ export function parseConfigJson5(
   }
 }
 
+function looksLikeYamlContent(raw: string): boolean {
+  const trimmed = raw.trimStart();
+  return trimmed.startsWith("#") || trimmed.startsWith("---") || trimmed.startsWith("%YAML");
+}
+
+function parseConfigDocument(
+  raw: string,
+  configPath: string,
+  json5: { parse: (value: string) => unknown },
+): ParseConfigDocumentResult {
+  const json5Result = parseConfigJson5(raw, json5);
+  if (json5Result.ok) {
+    return { ok: true, parsed: json5Result.parsed, format: "json5" };
+  }
+
+  const ext = path.extname(configPath).toLowerCase();
+  const shouldTryYaml = ext === ".yaml" || ext === ".yml" || looksLikeYamlContent(raw);
+  if (!shouldTryYaml) {
+    return { ok: false, error: json5Result.error };
+  }
+
+  try {
+    const parsed = YAML.parse(raw);
+    return { ok: true, parsed, format: "yaml" };
+  } catch (yamlErr) {
+    return {
+      ok: false,
+      error: `${json5Result.error}; YAML parse failed: ${String(yamlErr)}`,
+    };
+  }
+}
+
+function parseIncludedConfigRaw(
+  raw: string,
+  json5: { parse: (value: string) => unknown },
+): unknown {
+  const json5Result = parseConfigJson5(raw, json5);
+  if (json5Result.ok) {
+    return json5Result.parsed;
+  }
+  return YAML.parse(raw);
+}
+
 export function createConfigIO(overrides: ConfigIoDeps = {}) {
   const deps = normalizeDeps(overrides);
   const requestedConfigPath = resolveConfigPathForDeps(deps);
@@ -224,12 +272,16 @@ export function createConfigIO(overrides: ConfigIoDeps = {}) {
         return {};
       }
       const raw = deps.fs.readFileSync(configPath, "utf-8");
-      const parsed = deps.json5.parse(raw);
+      const parsedRes = parseConfigDocument(raw, configPath, deps.json5);
+      if (!parsedRes.ok) {
+        throw new Error(parsedRes.error);
+      }
+      const parsed = parsedRes.parsed;
 
       // Resolve $include directives before validation
       const resolved = resolveConfigIncludes(parsed, configPath, {
         readFile: (p) => deps.fs.readFileSync(p, "utf-8"),
-        parseJson: (raw) => deps.json5.parse(raw),
+        parseJson: (value) => parseIncludedConfigRaw(value, deps.json5),
       });
 
       // Apply config.env to process.env BEFORE substitution so ${VAR} can reference config-defined vars
@@ -351,7 +403,7 @@ export function createConfigIO(overrides: ConfigIoDeps = {}) {
     try {
       const raw = deps.fs.readFileSync(configPath, "utf-8");
       const hash = hashConfigRaw(raw);
-      const parsedRes = parseConfigJson5(raw, deps.json5);
+      const parsedRes = parseConfigDocument(raw, configPath, deps.json5);
       if (!parsedRes.ok) {
         return {
           path: configPath,
@@ -361,7 +413,7 @@ export function createConfigIO(overrides: ConfigIoDeps = {}) {
           valid: false,
           config: {},
           hash,
-          issues: [{ path: "", message: `JSON5 parse failed: ${parsedRes.error}` }],
+          issues: [{ path: "", message: `Config parse failed: ${parsedRes.error}` }],
           warnings: [],
           legacyIssues: [],
         };
@@ -372,7 +424,7 @@ export function createConfigIO(overrides: ConfigIoDeps = {}) {
       try {
         resolved = resolveConfigIncludes(parsedRes.parsed, configPath, {
           readFile: (p) => deps.fs.readFileSync(p, "utf-8"),
-          parseJson: (raw) => deps.json5.parse(raw),
+          parseJson: (value) => parseIncludedConfigRaw(value, deps.json5),
         });
       } catch (err) {
         const message =
