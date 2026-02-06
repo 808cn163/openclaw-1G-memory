@@ -42,6 +42,16 @@ type ChannelStatusSummary = {
   statusLines: string[];
 };
 
+const QUICKSTART_LOW_MEMORY_PRIORITY: Partial<Record<ChannelChoice, number>> = {
+  telegram: 100,
+  whatsapp: 90,
+  discord: 80,
+  slack: 70,
+  signal: 60,
+  imessage: 40,
+  googlechat: 30,
+};
+
 function formatAccountLabel(accountId: string): string {
   return accountId === DEFAULT_ACCOUNT_ID ? "default (primary)" : accountId;
 }
@@ -217,6 +227,30 @@ function resolveQuickstartDefault(
     }
   }
   return best?.channel;
+}
+
+function sortQuickstartEntriesForLowMemory(
+  entries: Array<{
+    id: ChannelChoice;
+    meta: { id: string; label: string; selectionLabel?: string };
+  }>,
+  statusByChannel: Map<ChannelChoice, { quickstartScore?: number }>,
+) {
+  return [...entries].sort((left, right) => {
+    const leftPriority = QUICKSTART_LOW_MEMORY_PRIORITY[left.id] ?? 0;
+    const rightPriority = QUICKSTART_LOW_MEMORY_PRIORITY[right.id] ?? 0;
+    if (leftPriority !== rightPriority) {
+      return rightPriority - leftPriority;
+    }
+
+    const leftScore = statusByChannel.get(left.id)?.quickstartScore ?? 0;
+    const rightScore = statusByChannel.get(right.id)?.quickstartScore ?? 0;
+    if (leftScore !== rightScore) {
+      return rightScore - leftScore;
+    }
+
+    return left.meta.label.localeCompare(right.meta.label);
+  });
 }
 
 async function maybeConfigureDmPolicies(params: {
@@ -613,17 +647,18 @@ export async function setupChannels(
 
   if (options?.quickstartDefaults) {
     const { entries } = getChannelEntries();
+    const quickstartEntries = sortQuickstartEntriesForLowMemory(entries, statusByChannel);
     const choice = (await prompter.select({
       message: "Select channel (QuickStart)",
       options: [
-        ...buildSelectionOptions(entries),
+        ...buildSelectionOptions(quickstartEntries),
         {
           value: "__skip__",
           label: "Skip for now",
           hint: `You can add channels later via \`${formatCliCommand("openclaw channels add")}\``,
         },
       ],
-      initialValue: quickstartDefault,
+      initialValue: quickstartDefault ?? quickstartEntries[0]?.id,
     })) as ChannelChoice | "__skip__";
     if (choice !== "__skip__") {
       await handleChannelChoice(choice);

@@ -205,4 +205,60 @@ describe("setupChannels", () => {
     expect(select).toHaveBeenCalledWith(expect.objectContaining({ message: "Select a channel" }));
     expect(multiselect).not.toHaveBeenCalled();
   });
+
+  it("QuickStart shows low-memory channel priority order", async () => {
+    const select = vi.fn(async ({ message, options }: { message: string; options: unknown[] }) => {
+      if (message !== "Select channel (QuickStart)") {
+        throw new Error(`unexpected select prompt: ${message}`);
+      }
+      const opts = options as Array<{ value: string }>;
+      const values = opts.map((opt) => opt.value);
+      const telegramIndex = values.indexOf("telegram");
+      const whatsappIndex = values.indexOf("whatsapp");
+      const discordIndex = values.indexOf("discord");
+      const slackIndex = values.indexOf("slack");
+      const signalIndex = values.indexOf("signal");
+      const imessageIndex = values.indexOf("imessage");
+      expect(telegramIndex).toBeGreaterThanOrEqual(0);
+      expect(whatsappIndex).toBeGreaterThanOrEqual(0);
+      expect(discordIndex).toBeGreaterThanOrEqual(0);
+      expect(slackIndex).toBeGreaterThanOrEqual(0);
+      expect(signalIndex).toBeGreaterThanOrEqual(0);
+      expect(imessageIndex).toBeGreaterThanOrEqual(0);
+      expect(telegramIndex).toBeLessThan(whatsappIndex);
+      expect(whatsappIndex).toBeLessThan(discordIndex);
+      expect(discordIndex).toBeLessThan(slackIndex);
+      expect(slackIndex).toBeLessThan(signalIndex);
+      expect(signalIndex).toBeLessThan(imessageIndex);
+      return "__skip__";
+    });
+
+    const prompter: WizardPrompter = {
+      intro: vi.fn(async () => {}),
+      outro: vi.fn(async () => {}),
+      note: vi.fn(async () => {}),
+      select,
+      multiselect: vi.fn(async () => []),
+      text: vi.fn(async () => ""),
+      confirm: vi.fn(async () => false),
+      progress: vi.fn(() => ({ update: vi.fn(), stop: vi.fn() })),
+    };
+
+    const runtime: RuntimeEnv = {
+      log: vi.fn(),
+      error: vi.fn(),
+      exit: vi.fn((code: number) => {
+        throw new Error(`exit:${code}`);
+      }),
+    };
+
+    await setupChannels({} as OpenClawConfig, runtime, prompter, {
+      skipConfirm: true,
+      quickstartDefaults: true,
+    });
+
+    expect(select).toHaveBeenCalledWith(
+      expect.objectContaining({ message: "Select channel (QuickStart)" }),
+    );
+  });
 });
