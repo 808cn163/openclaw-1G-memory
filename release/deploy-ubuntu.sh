@@ -599,9 +599,16 @@ main() {
                 run_doctor
                 echo -e "Config already present; skipping onboarding."
             else
-                echo -e "Starting setup..."
-                echo ""
-                if [[ -r /dev/tty && -w /dev/tty ]]; then
+                # 检测是否为交互式终端环境
+                # -t 0 检测 stdin 是否连接到终端（curl | bash 时为 false）
+                local is_interactive=0
+                if [[ -t 0 ]] && [[ -r /dev/tty && -w /dev/tty ]]; then
+                    is_interactive=1
+                fi
+
+                if [[ "$is_interactive" == "1" ]]; then
+                    echo -e "Starting setup..."
+                    echo ""
                     local claw="${OPENCLAW_BIN:-}"
                     if [[ -z "$claw" ]]; then
                         claw="$(resolve_openclaw_bin || true)"
@@ -611,12 +618,16 @@ main() {
                         warn_openclaw_not_found
                         return 0
                     fi
-                    exec </dev/tty
-                    exec "$claw" onboard
+                    # 在交互式终端中直接运行 onboard
+                    "$claw" onboard </dev/tty
+                else
+                    # 非交互式环境（如 curl | bash），跳过自动 onboard
+                    echo ""
+                    echo -e "${INFO}i${NC} 检测到非交互式环境 (如 curl | bash)，跳过配置向导。"
+                    echo -e "请手动运行以下命令完成配置："
+                    echo -e "  ${INFO}openclaw onboard${NC}"
+                    echo ""
                 fi
-                echo -e "${WARN}→${NC} No TTY available; skipping onboarding."
-                echo -e "Run ${INFO}openclaw onboard${NC} later."
-                return 0
             fi
         fi
     fi
