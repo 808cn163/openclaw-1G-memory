@@ -438,22 +438,11 @@ warn_openclaw_not_found() {
 }
 
 run_doctor() {
-    echo -e "${WARN}→${NC} Running doctor to migrate settings..."
-    local claw="${OPENCLAW_BIN:-}"
-    if [[ -z "$claw" ]]; then
-        claw="$(resolve_openclaw_bin || true)"
-    fi
-    if [[ -z "$claw" ]]; then
-        echo -e "${WARN}→${NC} Skipping doctor: ${INFO}openclaw${NC} not on PATH yet."
-        warn_openclaw_not_found
-        return 0
-    fi
-    # 添加超时防止卡住，忽略配置验证错误
-    if timeout 30 "$claw" doctor --non-interactive 2>&1; then
-        echo -e "${SUCCESS}✓${NC} Migration complete"
-    else
-        echo -e "${WARN}→${NC} Doctor 运行失败或超时，请稍后手动运行: ${INFO}openclaw doctor${NC}"
-    fi
+    # 低内存版本: 跳过自动运行 doctor，避免 OOM
+    # doctor 命令加载 30+ 模块，在 <1GB 内存机器上容易 OOM
+    echo -e "${WARN}→${NC} 低内存模式: 跳过自动 doctor 检查"
+    echo -e "${INFO}i${NC} 如需迁移设置，请稍后手动运行: ${INFO}openclaw doctor${NC}"
+    return 0
 }
 
 resolve_workspace_dir() {
