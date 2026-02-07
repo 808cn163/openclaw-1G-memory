@@ -97,6 +97,18 @@ describe("config plugin validation", () => {
     });
   });
 
+  it("does not fail on implicit default memory slot when memory-core is absent", async () => {
+    await withTempHome(async (home) => {
+      process.env.OPENCLAW_STATE_DIR = path.join(home, ".openclaw");
+      vi.resetModules();
+      const { validateConfigObjectWithPlugins } = await import("./config.js");
+      const res = validateConfigObjectWithPlugins({
+        agents: { list: [{ id: "pi" }] },
+      });
+      expect(res.ok).toBe(true);
+    });
+  });
+
   it("surfaces plugin config diagnostics", async () => {
     await withTempHome(async (home) => {
       process.env.OPENCLAW_STATE_DIR = path.join(home, ".openclaw");

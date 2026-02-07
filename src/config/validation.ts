@@ -9,6 +9,7 @@ import {
 } from "../plugins/config-state.js";
 import { loadPluginManifestRegistry } from "../plugins/manifest-registry.js";
 import { validateJsonSchemaValue } from "../plugins/schema-validator.js";
+import { defaultSlotIdForKey } from "../plugins/slots.js";
 import { findDuplicateAgentDirs, formatDuplicateAgentDirError } from "./agent-dirs.js";
 import { applyAgentDefaults, applyModelDefaults, applySessionDefaults } from "./defaults.js";
 import { findLegacyConfigIssues } from "./legacy.js";
@@ -18,6 +19,12 @@ const AVATAR_SCHEME_RE = /^[a-z][a-z0-9+.-]*:/i;
 const AVATAR_DATA_RE = /^data:/i;
 const AVATAR_HTTP_RE = /^https?:\/\//i;
 const WINDOWS_ABS_RE = /^[a-zA-Z]:[\\/]/;
+
+function hasExplicitMemorySlotConfig(config: OpenClawConfig): boolean {
+  return Boolean(
+    config.plugins?.slots && Object.prototype.hasOwnProperty.call(config.plugins.slots, "memory"),
+  );
+}
 
 function isWorkspaceAvatarPath(value: string, workspaceDir: string): boolean {
   const workspaceRoot = path.resolve(workspaceDir);
@@ -220,7 +227,14 @@ export function validateConfigObjectWithPlugins(raw: unknown):
   }
 
   const memorySlot = normalizedPlugins.slots.memory;
-  if (typeof memorySlot === "string" && memorySlot.trim() && !knownIds.has(memorySlot)) {
+  const memorySlotIsImplicitDefault =
+    !hasExplicitMemorySlotConfig(config) && memorySlot === defaultSlotIdForKey("memory");
+  if (
+    typeof memorySlot === "string" &&
+    memorySlot.trim() &&
+    !knownIds.has(memorySlot) &&
+    !memorySlotIsImplicitDefault
+  ) {
     issues.push({
       path: "plugins.slots.memory",
       message: `plugin not found: ${memorySlot}`,
