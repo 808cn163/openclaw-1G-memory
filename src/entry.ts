@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { spawn } from "node:child_process";
+import os from "node:os";
 import path from "node:path";
 import process from "node:process";
 import { applyCliProfileEnv, parseCliProfileArgs } from "./cli/profile.js";
@@ -17,12 +18,85 @@ if (process.argv.includes("--no-color")) {
 }
 
 const EXPERIMENTAL_WARNING_FLAG = "--disable-warning=ExperimentalWarning";
+const MAX_OLD_SPACE_SIZE_FLAG = "--max-old-space-size";
+const LOW_MEMORY_HEAVY_COMMANDS = new Set(["onboard", "setup", "configure"]);
 
 function hasExperimentalWarningSuppressed(nodeOptions: string): boolean {
   if (!nodeOptions) {
     return false;
   }
   return nodeOptions.includes(EXPERIMENTAL_WARNING_FLAG) || nodeOptions.includes("--no-warnings");
+}
+
+function hasMaxOldSpaceSize(nodeOptions: string): boolean {
+  if (!nodeOptions) {
+    return false;
+  }
+  return /(?:^|\s)--max-old-space-size(?:=|\s)\d+/.test(nodeOptions);
+}
+
+function detectPrimaryCliCommand(argv: string[]): string | null {
+  const args = argv.slice(2);
+  for (let index = 0; index < args.length; index += 1) {
+    const value = args[index];
+    if (!value) {
+      continue;
+    }
+    if (value === "--") {
+      return null;
+    }
+    if (value === "--profile") {
+      index += 1;
+      continue;
+    }
+    if (value.startsWith("--profile=")) {
+      continue;
+    }
+    if (value.startsWith("-")) {
+      continue;
+    }
+    return value;
+  }
+  return null;
+}
+
+function resolveLowMemoryHeapMegabytes(): number | null {
+  const totalMemoryMb = Math.floor(os.totalmem() / (1024 * 1024));
+  if (totalMemoryMb <= 0) {
+    return null;
+  }
+  if (totalMemoryMb <= 1024) {
+    return 640;
+  }
+  if (totalMemoryMb <= 1536) {
+    return 768;
+  }
+  if (totalMemoryMb <= 2048) {
+    return 896;
+  }
+  return null;
+}
+
+function resolveMemoryFlag(nodeOptions: string, argv: string[]): string | null {
+  if (hasMaxOldSpaceSize(nodeOptions)) {
+    return null;
+  }
+
+  const forced = process.env.OPENCLAW_FORCE_MAX_OLD_SPACE_SIZE?.trim();
+  if (forced && /^\d+$/.test(forced) && Number.parseInt(forced, 10) > 0) {
+    return `${MAX_OLD_SPACE_SIZE_FLAG}=${forced}`;
+  }
+
+  const primaryCommand = detectPrimaryCliCommand(argv);
+  if (!primaryCommand || !LOW_MEMORY_HEAVY_COMMANDS.has(primaryCommand)) {
+    return null;
+  }
+
+  const heapSize = resolveLowMemoryHeapMegabytes();
+  if (!heapSize) {
+    return null;
+  }
+  return `${MAX_OLD_SPACE_SIZE_FLAG}=${heapSize}`;
 }
 
 function ensureExperimentalWarningSuppressed(): boolean {
@@ -33,12 +107,21 @@ function ensureExperimentalWarningSuppressed(): boolean {
     return false;
   }
   const nodeOptions = process.env.NODE_OPTIONS ?? "";
-  if (hasExperimentalWarningSuppressed(nodeOptions)) {
+  const flagsToApply: string[] = [];
+  if (!hasExperimentalWarningSuppressed(nodeOptions)) {
+    flagsToApply.push(EXPERIMENTAL_WARNING_FLAG);
+  }
+  const memoryFlag = resolveMemoryFlag(nodeOptions, process.argv);
+  if (memoryFlag) {
+    flagsToApply.push(memoryFlag);
+  }
+
+  if (flagsToApply.length === 0) {
     return false;
   }
 
   process.env.OPENCLAW_NODE_OPTIONS_READY = "1";
-  process.env.NODE_OPTIONS = `${nodeOptions} ${EXPERIMENTAL_WARNING_FLAG}`.trim();
+  process.env.NODE_OPTIONS = `${nodeOptions} ${flagsToApply.join(" ")}`.trim();
 
   const child = spawn(process.execPath, [...process.execArgv, ...process.argv.slice(1)], {
     stdio: "inherit",
