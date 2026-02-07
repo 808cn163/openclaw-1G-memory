@@ -33,10 +33,34 @@ export async function onboardCommand(opts: OnboardOptions, runtime: RuntimeEnv =
     runtime.log('Auth choice "codex-cli" is deprecated; using OpenAI Codex OAuth instead.');
   }
   const flow = opts.flow === "manual" ? ("advanced" as const) : opts.flow;
+  const lowMemory = opts.lowMemory === true;
+  const effectiveFlow = lowMemory && !flow ? ("quickstart" as const) : flow;
+  const effectiveMode = lowMemory && !opts.mode ? ("local" as const) : opts.mode;
+  const effectiveSkipChannels =
+    opts.skipChannels ?? opts.skipProviders ?? (lowMemory ? true : undefined);
+  const effectiveSkipSkills = opts.skipSkills ?? (lowMemory ? true : undefined);
+  const effectiveSkipHealth = opts.skipHealth ?? (lowMemory ? true : undefined);
+  const effectiveSkipUi = opts.skipUi ?? (lowMemory ? true : undefined);
+
   const normalizedOpts =
-    normalizedAuthChoice === opts.authChoice && flow === opts.flow
+    normalizedAuthChoice === opts.authChoice &&
+    effectiveFlow === opts.flow &&
+    effectiveMode === opts.mode &&
+    effectiveSkipChannels === opts.skipChannels &&
+    effectiveSkipSkills === opts.skipSkills &&
+    effectiveSkipHealth === opts.skipHealth &&
+    effectiveSkipUi === opts.skipUi
       ? opts
-      : { ...opts, authChoice: normalizedAuthChoice, flow };
+      : {
+          ...opts,
+          authChoice: normalizedAuthChoice,
+          flow: effectiveFlow,
+          mode: effectiveMode,
+          skipChannels: effectiveSkipChannels,
+          skipSkills: effectiveSkipSkills,
+          skipHealth: effectiveSkipHealth,
+          skipUi: effectiveSkipUi,
+        };
 
   if (normalizedOpts.nonInteractive && normalizedOpts.acceptRisk !== true) {
     runtime.error(

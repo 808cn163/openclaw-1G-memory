@@ -38,6 +38,17 @@ async function requireRiskAcknowledgement(params: {
     return;
   }
 
+  if (params.opts.lowMemory === true) {
+    const ok = await params.prompter.confirm({
+      message: "Low-memory mode: continue onboarding with reduced prompts?",
+      initialValue: true,
+    });
+    if (!ok) {
+      throw new WizardCancelledError("risk not accepted");
+    }
+    return;
+  }
+
   await params.prompter.note(
     [
       "Security warning — please read.",
@@ -104,6 +115,8 @@ export async function runOnboardingWizard(
     return;
   }
 
+  const lowMemory = opts.lowMemory === true;
+
   const quickstartHint = `Configure details later via ${formatCliCommand("openclaw configure")}.`;
   const manualHint = "Configure port, network, Tailscale, and auth options.";
   const explicitFlowRaw = opts.flow?.trim();
@@ -123,14 +136,16 @@ export async function runOnboardingWizard(
       : undefined;
   let flow: WizardFlow =
     explicitFlow ??
-    (await prompter.select({
-      message: "Onboarding mode",
-      options: [
-        { value: "quickstart", label: "QuickStart", hint: quickstartHint },
-        { value: "advanced", label: "Manual", hint: manualHint },
-      ],
-      initialValue: "quickstart",
-    }));
+    (lowMemory
+      ? "quickstart"
+      : await prompter.select({
+          message: "Onboarding mode",
+          options: [
+            { value: "quickstart", label: "QuickStart", hint: quickstartHint },
+            { value: "advanced", label: "Manual", hint: manualHint },
+          ],
+          initialValue: "quickstart",
+        }));
 
   if (opts.mode === "remote" && flow === "quickstart") {
     await prompter.note(
@@ -294,7 +309,7 @@ export async function runOnboardingWizard(
 
   const mode =
     opts.mode ??
-    (flow === "quickstart"
+    (flow === "quickstart" || lowMemory
       ? "local"
       : ((await prompter.select({
           message: "What do you want to set up?",

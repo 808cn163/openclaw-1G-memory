@@ -37,6 +37,25 @@ function resolveInstallDaemonFlag(
   return undefined;
 }
 
+function resolveOptionalBooleanFlag(
+  command: unknown,
+  optionName: string,
+  value: boolean,
+): boolean | undefined {
+  if (!command || typeof command !== "object") {
+    return undefined;
+  }
+  const getOptionValueSource =
+    "getOptionValueSource" in command ? command.getOptionValueSource : undefined;
+  if (typeof getOptionValueSource !== "function") {
+    return undefined;
+  }
+  if (getOptionValueSource.call(command, optionName) !== "cli") {
+    return undefined;
+  }
+  return value;
+}
+
 export function registerOnboardCommand(program: Command) {
   program
     .command("onboard")
@@ -55,6 +74,7 @@ export function registerOnboardCommand(program: Command) {
       false,
     )
     .option("--flow <flow>", "Wizard flow: quickstart|advanced|manual")
+    .option("--low-memory", "Low-memory wizard mode: fewer prompts and lighter defaults", false)
     .option("--mode <mode>", "Wizard mode: local|remote")
     .option(
       "--auth-choice <choice>",
@@ -110,6 +130,22 @@ export function registerOnboardCommand(program: Command) {
         const installDaemon = resolveInstallDaemonFlag(command, {
           installDaemon: Boolean(opts.installDaemon),
         });
+        const skipChannels = resolveOptionalBooleanFlag(
+          command,
+          "skipChannels",
+          Boolean(opts.skipChannels),
+        );
+        const skipSkills = resolveOptionalBooleanFlag(
+          command,
+          "skipSkills",
+          Boolean(opts.skipSkills),
+        );
+        const skipHealth = resolveOptionalBooleanFlag(
+          command,
+          "skipHealth",
+          Boolean(opts.skipHealth),
+        );
+        const skipUi = resolveOptionalBooleanFlag(command, "skipUi", Boolean(opts.skipUi));
         const gatewayPort =
           typeof opts.gatewayPort === "string" ? Number.parseInt(opts.gatewayPort, 10) : undefined;
         await onboardCommand(
@@ -118,6 +154,7 @@ export function registerOnboardCommand(program: Command) {
             nonInteractive: Boolean(opts.nonInteractive),
             acceptRisk: Boolean(opts.acceptRisk),
             flow: opts.flow as "quickstart" | "advanced" | "manual" | undefined,
+            lowMemory: Boolean(opts.lowMemory),
             mode: opts.mode as "local" | "remote" | undefined,
             authChoice: opts.authChoice as AuthChoice | undefined,
             tokenProvider: opts.tokenProvider as string | undefined,
@@ -155,10 +192,10 @@ export function registerOnboardCommand(program: Command) {
             reset: Boolean(opts.reset),
             installDaemon,
             daemonRuntime: opts.daemonRuntime as GatewayDaemonRuntime | undefined,
-            skipChannels: Boolean(opts.skipChannels),
-            skipSkills: Boolean(opts.skipSkills),
-            skipHealth: Boolean(opts.skipHealth),
-            skipUi: Boolean(opts.skipUi),
+            skipChannels,
+            skipSkills,
+            skipHealth,
+            skipUi,
             nodeManager: opts.nodeManager as NodeManagerChoice | undefined,
             json: Boolean(opts.json),
           },

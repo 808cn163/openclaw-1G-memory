@@ -81,6 +81,14 @@ openclaw onboard --non-interactive --accept-risk --auth-choice skip --skip-chann
 
 随后可再运行 `openclaw configure` 或重新执行 `openclaw onboard` 做交互式完善配置。
 
+如果仍希望使用交互式向导，可启用低内存交互模式（首轮 prompt 数量更少）：
+
+```bash
+openclaw onboard --low-memory
+```
+
+该模式会优先走 `quickstart + local`，并默认跳过 channels/skills/health/UI 的首次引导步骤。
+
 ### 手动安装
 
 如果您偏好手动控制，可以按照以下步骤操作：

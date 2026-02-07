@@ -49,6 +49,8 @@ export type OnboardOptions = {
   mode?: OnboardMode;
   /** "manual" is an alias for "advanced". */
   flow?: "quickstart" | "advanced" | "manual";
+  /** Reduce interactive prompts and optional setup steps for low-memory hosts. */
+  lowMemory?: boolean;
   workspace?: string;
   nonInteractive?: boolean;
   /** Required for non-interactive onboarding; skips the interactive risk prompt when true. */
