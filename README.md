@@ -73,6 +73,14 @@ openclaw --version
 openclaw status
 ```
 
+如果在超低内存环境中执行 `openclaw onboard` 出现长时间无响应，建议先用非交互模式完成最小初始化：
+
+```bash
+openclaw onboard --non-interactive --accept-risk --auth-choice skip --skip-channels --skip-skills --skip-health --skip-ui
+```
+
+随后可再运行 `openclaw configure` 或重新执行 `openclaw onboard` 做交互式完善配置。
+
 ### 手动安装
 
 如果您偏好手动控制，可以按照以下步骤操作：

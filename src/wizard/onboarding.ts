@@ -8,16 +8,7 @@ import type { OpenClawConfig } from "../config/config.js";
 import type { RuntimeEnv } from "../runtime.js";
 import type { QuickstartGatewayDefaults, WizardFlow } from "./onboarding.types.js";
 import { ensureAuthProfileStore } from "../agents/auth-profiles.js";
-import { listChannelPlugins } from "../channels/plugins/index.js";
 import { formatCliCommand } from "../cli/command-format.js";
-import { promptAuthChoiceGrouped } from "../commands/auth-choice-prompt.js";
-import {
-  applyAuthChoice,
-  resolvePreferredProviderForAuthChoice,
-  warnIfModelConfigLooksOff,
-} from "../commands/auth-choice.js";
-import { applyPrimaryModel, promptDefaultModel } from "../commands/model-picker.js";
-import { setupChannels } from "../commands/onboard-channels.js";
 import {
   applyWizardMetadata,
   DEFAULT_WORKSPACE,
@@ -27,9 +18,6 @@ import {
   probeGatewayReachable,
   summarizeExistingConfig,
 } from "../commands/onboard-helpers.js";
-import { setupInternalHooks } from "../commands/onboard-hooks.js";
-import { promptRemoteGatewayConfig } from "../commands/onboard-remote.js";
-import { setupSkills } from "../commands/onboard-skills.js";
 import {
   DEFAULT_GATEWAY_PORT,
   readConfigFileSnapshot,
@@ -39,7 +27,6 @@ import {
 import { logConfigUpdated } from "../config/logging.js";
 import { defaultRuntime } from "../runtime.js";
 import { resolveUserPath } from "../utils.js";
-import { finalizeOnboardingWizard } from "./onboarding.finalize.js";
 import { configureGatewayForOnboarding } from "./onboarding.gateway-config.js";
 import { WizardCancelledError, type WizardPrompter } from "./prompts.js";
 
@@ -332,6 +319,7 @@ export async function runOnboardingWizard(
         })) as OnboardMode));
 
   if (mode === "remote") {
+    const { promptRemoteGatewayConfig } = await import("../commands/onboard-remote.js");
     let nextConfig = await promptRemoteGatewayConfig(baseConfig, prompter);
     nextConfig = applyWizardMetadata(nextConfig, { command: "onboard", mode });
     await writeConfigFile(nextConfig);
@@ -370,6 +358,7 @@ export async function runOnboardingWizard(
     allowKeychainPrompt: false,
   });
   const authChoiceFromPrompt = opts.authChoice === undefined;
+  const { promptAuthChoiceGrouped } = await import("../commands/auth-choice-prompt.js");
   const authChoice =
     opts.authChoice ??
     (await promptAuthChoiceGrouped({
@@ -378,6 +367,8 @@ export async function runOnboardingWizard(
       includeSkip: true,
     }));
 
+  const { applyAuthChoice, resolvePreferredProviderForAuthChoice, warnIfModelConfigLooksOff } =
+    await import("../commands/auth-choice.js");
   const authResult = await applyAuthChoice({
     authChoice,
     config: nextConfig,
@@ -392,6 +383,7 @@ export async function runOnboardingWizard(
   nextConfig = authResult.config;
 
   if (authChoiceFromPrompt) {
+    const { applyPrimaryModel, promptDefaultModel } = await import("../commands/model-picker.js");
     const modelSelection = await promptDefaultModel({
       config: nextConfig,
       prompter,
@@ -421,6 +413,8 @@ export async function runOnboardingWizard(
   if (opts.skipChannels ?? opts.skipProviders) {
     await prompter.note("Skipping channel setup.", "Channels");
   } else {
+    const { listChannelPlugins } = await import("../channels/plugins/index.js");
+    const { setupChannels } = await import("../commands/onboard-channels.js");
     const quickstartAllowFromChannels =
       flow === "quickstart"
         ? listChannelPlugins()
@@ -445,15 +439,18 @@ export async function runOnboardingWizard(
   if (opts.skipSkills) {
     await prompter.note("Skipping skills setup.", "Skills");
   } else {
+    const { setupSkills } = await import("../commands/onboard-skills.js");
     nextConfig = await setupSkills(nextConfig, workspaceDir, runtime, prompter);
   }
 
   // Setup hooks (session memory on /new)
+  const { setupInternalHooks } = await import("../commands/onboard-hooks.js");
   nextConfig = await setupInternalHooks(nextConfig, runtime, prompter);
 
   nextConfig = applyWizardMetadata(nextConfig, { command: "onboard", mode });
   await writeConfigFile(nextConfig);
 
+  const { finalizeOnboardingWizard } = await import("./onboarding.finalize.js");
   const { launchedTui } = await finalizeOnboardingWizard({
     flow,
     opts,

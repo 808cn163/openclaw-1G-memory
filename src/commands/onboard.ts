@@ -6,8 +6,6 @@ import { assertSupportedRuntime } from "../infra/runtime-guard.js";
 import { defaultRuntime } from "../runtime.js";
 import { resolveUserPath } from "../utils.js";
 import { DEFAULT_WORKSPACE, handleReset } from "./onboard-helpers.js";
-import { runInteractiveOnboarding } from "./onboard-interactive.js";
-import { runNonInteractiveOnboarding } from "./onboard-non-interactive.js";
 
 export async function onboardCommand(opts: OnboardOptions, runtime: RuntimeEnv = defaultRuntime) {
   assertSupportedRuntime(runtime);
@@ -72,10 +70,12 @@ export async function onboardCommand(opts: OnboardOptions, runtime: RuntimeEnv =
   }
 
   if (normalizedOpts.nonInteractive) {
+    const { runNonInteractiveOnboarding } = await import("./onboard-non-interactive.js");
     await runNonInteractiveOnboarding(normalizedOpts, runtime);
     return;
   }
 
+  const { runInteractiveOnboarding } = await import("./onboard-interactive.js");
   await runInteractiveOnboarding(normalizedOpts, runtime);
 }
 
