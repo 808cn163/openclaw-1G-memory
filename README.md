@@ -119,7 +119,7 @@ npm run build
 A: 请确保使用 `npm install --omit=dev` 来跳过开发依赖，这可以显著降低内存占用。如果仍然遇到问题，尝试增加 swap 空间。
 
 **Q: 在 1GB 内存机器执行 `openclaw onboard` 仍然 OOM？**
-A: 低内存版会自动为 `onboard/setup/configure` 注入更保守的 Node 堆大小（无需手动配置）。如需手动覆盖，可临时指定：`OPENCLAW_FORCE_MAX_OLD_SPACE_SIZE=640 openclaw onboard`，或使用 `NODE_OPTIONS=--max-old-space-size=640`。
+A: 低内存版会自动为 `onboard/setup/configure` 注入更保守的 Node 堆大小（安装脚本会设置 `OPENCLAW_FORCE_MAX_OLD_SPACE_SIZE`，无需手动配置）。如需手动覆盖，可临时指定：`OPENCLAW_FORCE_MAX_OLD_SPACE_SIZE=640 openclaw onboard`，或使用 `NODE_OPTIONS=--max-old-space-size=640`。
 
 **Q: 如何保持后台运行？**
 A: 推荐使用 `pm2` 或 `systemd` 来管理进程。一键脚本会自动配置 systemd 服务。

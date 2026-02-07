@@ -404,23 +404,25 @@ create_bin_link() {
     # 检测系统内存并设置合适的堆内存限制
     local total_mem_mb
     total_mem_mb=$(free -m 2>/dev/null | awk '/^Mem:/{print $2}' || echo "1024")
-    local heap_size=256
+    local heap_size=640
     if [[ "$total_mem_mb" -lt 512 ]]; then
-        heap_size=128
-    elif [[ "$total_mem_mb" -lt 1024 ]]; then
-        heap_size=256
-    elif [[ "$total_mem_mb" -lt 2048 ]]; then
         heap_size=384
+    elif [[ "$total_mem_mb" -lt 1024 ]]; then
+        heap_size=640
+    elif [[ "$total_mem_mb" -lt 1536 ]]; then
+        heap_size=768
+    elif [[ "$total_mem_mb" -lt 2048 ]]; then
+        heap_size=896
     else
-        heap_size=512
+        heap_size=1024
     fi
 
     maybe_sudo tee "$BIN_LINK" > /dev/null <<WRAPPER
 #!/usr/bin/env bash
 set -euo pipefail
-# 低内存优化: 限制 Node.js 堆内存为 ${heap_size}MB
-# 可通过 NODE_OPTIONS 环境变量覆盖
-export NODE_OPTIONS="\${NODE_OPTIONS:---max-old-space-size=${heap_size}}"
+# 低内存优化: 为重命令(onboard/setup/configure)提供更宽松堆限制
+# 通过 OPENCLAW_FORCE_MAX_OLD_SPACE_SIZE 注入，不覆盖用户显式 NODE_OPTIONS
+export OPENCLAW_FORCE_MAX_OLD_SPACE_SIZE="\${OPENCLAW_FORCE_MAX_OLD_SPACE_SIZE:-${heap_size}}"
 exec node "${INSTALL_DIR}/openclaw.mjs" "\$@"
 WRAPPER
 
