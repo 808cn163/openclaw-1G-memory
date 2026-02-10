@@ -125,10 +125,10 @@ swapon --show
 
 ## 🚑 OOM 修复参数（已实测）
 
-在 1G 内存机器上，如果 `openclaw onboard` 报错 `JavaScript heap out of memory`，请使用以下参数：
+在 1G 内存机器上，如果 `openclaw onboard` 或 `openclaw onboard --install-daemon` 报错 `JavaScript heap out of memory`，请使用以下参数：
 
 ```bash
-OPENCLAW_FORCE_MAX_OLD_SPACE_SIZE=896 NODE_OPTIONS="--max-old-space-size=896" openclaw onboard
+OPENCLAW_FORCE_MAX_OLD_SPACE_SIZE=896 NODE_OPTIONS="--max-old-space-size=896" openclaw onboard --install-daemon
 ```
 
 已验证结果：使用 `896` 后可稳定进入 `openclaw onboard` 交互向导页面，不再出现 OOM 崩溃。

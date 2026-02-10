@@ -414,6 +414,20 @@ if [[ ! " \${NODE_OPTIONS:-} " =~ [[:space:]]--max-old-space-size(=|[[:space:]])
   export NODE_OPTIONS="\${NODE_OPTIONS:+\${NODE_OPTIONS} }--max-old-space-size=\${OPENCLAW_FORCE_MAX_OLD_SPACE_SIZE}"
 fi
 
+# 交互式向导保护: 某些 SSH/PTY 场景下 stty 会返回 0 0，导致 TUI 渲染异常并放大内存占用
+if [[ -t 1 ]]; then
+  if command -v stty >/dev/null 2>&1; then
+    tty_size="\$(stty size 2>/dev/null || true)"
+    tty_rows="\${tty_size%% *}"
+    tty_cols="\${tty_size##* }"
+    if [[ "\${tty_rows:-0}" == "0" || "\${tty_cols:-0}" == "0" ]]; then
+      export COLUMNS="\${COLUMNS:-120}"
+      export LINES="\${LINES:-40}"
+      stty cols "\${COLUMNS}" rows "\${LINES}" 2>/dev/null || true
+    fi
+  fi
+fi
+
 exec node "${INSTALL_DIR}/openclaw.mjs" "\$@"
 WRAPPER
 
