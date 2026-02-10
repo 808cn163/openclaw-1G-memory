@@ -54,7 +54,7 @@ curl -fsSL https://github.com/808cn163/openclaw-1G-memory/releases/latest/downlo
 ### 方式二：指定版本安装
 
 ```bash
-curl -fsSL https://github.com/808cn163/openclaw-1G-memory/releases/latest/download/deploy-ubuntu.sh | bash -s -- --version v2026.2.3-lite
+curl -fsSL https://github.com/808cn163/openclaw-1G-memory/releases/latest/download/deploy-ubuntu.sh | bash -s -- --version v2026.2.10-lite
 ```
 
 ### 方式三：离线/半离线安装
