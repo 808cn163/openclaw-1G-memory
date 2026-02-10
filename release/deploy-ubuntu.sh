@@ -401,28 +401,19 @@ create_bin_link() {
 
     maybe_sudo rm -f "$BIN_LINK"
 
-    # 检测系统内存并设置合适的堆内存限制
-    local total_mem_mb
-    total_mem_mb=$(free -m 2>/dev/null | awk '/^Mem:/{print $2}' || echo "1024")
-    local heap_size=640
-    if [[ "$total_mem_mb" -lt 512 ]]; then
-        heap_size=384
-    elif [[ "$total_mem_mb" -lt 1024 ]]; then
-        heap_size=640
-    elif [[ "$total_mem_mb" -lt 1536 ]]; then
-        heap_size=768
-    elif [[ "$total_mem_mb" -lt 2048 ]]; then
-        heap_size=896
-    else
-        heap_size=1024
-    fi
+    local heap_size=896
 
     maybe_sudo tee "$BIN_LINK" > /dev/null <<WRAPPER
 #!/usr/bin/env bash
 set -euo pipefail
-# 低内存优化: 为重命令(onboard/setup/configure)提供更宽松堆限制
-# 通过 OPENCLAW_FORCE_MAX_OLD_SPACE_SIZE 注入，不覆盖用户显式 NODE_OPTIONS
+# 低内存优化: 在 1G 机器上默认使用已验证的 896MB 堆
+# 不覆盖用户显式设置的 --max-old-space-size
 export OPENCLAW_FORCE_MAX_OLD_SPACE_SIZE="\${OPENCLAW_FORCE_MAX_OLD_SPACE_SIZE:-${heap_size}}"
+
+if [[ ! " \${NODE_OPTIONS:-} " =~ [[:space:]]--max-old-space-size(=|[[:space:]])[0-9]+ ]]; then
+  export NODE_OPTIONS="\${NODE_OPTIONS:+\${NODE_OPTIONS} }--max-old-space-size=\${OPENCLAW_FORCE_MAX_OLD_SPACE_SIZE}"
+fi
+
 exec node "${INSTALL_DIR}/openclaw.mjs" "\$@"
 WRAPPER
 
