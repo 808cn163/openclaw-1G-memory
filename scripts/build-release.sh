@@ -94,6 +94,10 @@ cp "$MEMORY_CORE_DIR/openclaw.plugin.json" "$OUTPUT_DIR/$PACKAGE_NAME/extensions
 cp -r assets "$OUTPUT_DIR/$PACKAGE_NAME/" 2>/dev/null || true
 cp -r skills "$OUTPUT_DIR/$PACKAGE_NAME/" 2>/dev/null || true
 
+# 工作区模板（onboard --install-daemon 依赖）
+mkdir -p "$OUTPUT_DIR/$PACKAGE_NAME/docs/reference"
+cp -r docs/reference/templates "$OUTPUT_DIR/$PACKAGE_NAME/docs/reference/"
+
 # 文档和许可
 cp README.md "$OUTPUT_DIR/$PACKAGE_NAME/" 2>/dev/null || true
 cp LICENSE "$OUTPUT_DIR/$PACKAGE_NAME/" 2>/dev/null || true
